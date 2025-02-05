@@ -19,10 +19,10 @@
 namespace powerserve {
 
 struct SpeculativeConfig {
-    size_t draft_batch_size = 12;
+    size_t draft_batch_size = 18;
 
     struct {
-        size_t top_k      = 15;
+        size_t top_k      = 2; // 15
         float temperature = 1.5f;
         float p_base      = 0.9f;
     } draft_sampler;
@@ -31,7 +31,7 @@ struct SpeculativeConfig {
         size_t max_fan_out = 3;
         float min_prob     = 0.2f;
         bool early_stop    = true;
-        bool debug         = false;
+        bool debug         = true;
     } token_tree;
 };
 

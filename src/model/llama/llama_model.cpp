@@ -61,6 +61,8 @@ auto LlamaModel::forward(
 
     auto &llm_config = m_config->llm;
 
+    // fmt::println("no bug inside forward 1......");
+
 #if defined(POWERSERVE_WITH_QNN)
     if (m_platform->qnn_backend) {
         auto size            = llm_config.dim;
@@ -98,10 +100,16 @@ auto LlamaModel::forward(
         }
     }
 
+    // fmt::println("no bug inside forward 2......");
+
     Executor executor(*m_platform, g);
     executor.allocate_buffers();
 
+    // fmt::println("no bug inside forward 3......");
+
     executor.run();
+
+    // fmt::println("no bug inside forward 4......");
 #if defined(POWERSERVE_WITH_QNN)
     if (!m_platform->qnn_backend)
 #endif

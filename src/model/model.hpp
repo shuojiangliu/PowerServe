@@ -65,6 +65,7 @@ struct TokenIterator {
 
     virtual auto next() -> Token {
         auto next = m_tokens.front();
+        fmt::print("\033[31m(Inside TokenIterator::next()) The next token is: {} (#{})\033[0m\n", m_tokenizer.to_string(next), next);
         decode();
         return next;
     }

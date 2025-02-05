@@ -46,7 +46,12 @@ add_subdirectory(executor)
 add_subdirectory(graph)
 add_subdirectory(model)
 add_subdirectory(sampler)
-if (POWERSERVE_WITH_QNN)
-    add_subdirectory(speculative)
-endif()
+#if (POWERSERVE_WITH_QNN)
+#    add_subdirectory(speculative)
+#endif()
+
+# spec test: ============================
+add_subdirectory(speculative)
+# =======================================
+
 add_subdirectory(tokenizer)

@@ -26,7 +26,7 @@
 namespace powerserve {
 
 struct Platform {
-    std::map<std::string, std::unique_ptr<ggml::GGMLBackend>> ggml_backends;
+    std::map<std::string, std::shared_ptr<ggml::GGMLBackend>> ggml_backends;
 
 #if defined(POWERSERVE_WITH_QNN)
     std::unique_ptr<qnn::QNNBackend> qnn_backend = nullptr;

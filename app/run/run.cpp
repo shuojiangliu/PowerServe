@@ -46,6 +46,10 @@ int main(int argc, char *argv[]) {
     if (args.use_spec) {
         draft_model->m_platform = platform;
         platform->init_ggml_backend(draft_model->m_config, config.hyper_params);
+        // speculative decoding cpu: =================================================================
+        main_model->kv_cache = platform->ggml_backends[main_model->m_config->model_id]->m_kv->kv_cache.get();
+        draft_model->kv_cache = platform->ggml_backends[draft_model->m_config->model_id]->m_kv->kv_cache.get();
+        // ===========================================================================================
     }
 
 #if defined(POWERSERVE_WITH_QNN)
@@ -106,12 +110,33 @@ int main(int argc, char *argv[]) {
         iter       = spec_model->generate(tokenizer, sampler, args.prompt, args.num_predict, batch_size);
     } else
 #endif
+    // speculative decoding cpu: =============================================
+    std::shared_ptr<powerserve::SpeculativeModel> spec_model = nullptr;
+    // =======================================================================
     {
-        iter = main_model->generate(tokenizer, sampler, args.prompt, args.num_predict, batch_size);
+        // uncomment this for non-spec!!!!
+        // iter = main_model->generate(tokenizer, sampler, args.prompt, args.num_predict, batch_size);
+
+        // speculative decoding cpu: =========================================
+        spec_model = std::make_shared<powerserve::SpeculativeModel>(main_model, draft_model, args.speculative_config);
+        fmt::println("Not bug here2......");
+        main_model->m_platform->ggml_backends[main_model->m_config->model_id]->setup_threadpool();
+        draft_model->m_platform->ggml_backends[draft_model->m_config->model_id]->setup_threadpool();
+        iter       = spec_model->generate(tokenizer, sampler, args.prompt, args.num_predict, batch_size);
+        fmt::println("Not bug here3......");
+
+        main_model->m_platform->ggml_backends[main_model->m_config->model_id]->setup_threadpool();
+        draft_model->m_platform->ggml_backends[draft_model->m_config->model_id]->setup_threadpool();
+        // ===================================================================
     }
     prefill_end = powerserve::timestamp_ms();
 
+    fmt::println("Not bug here4......");
+
+    int loopNum = 1;
+
     while (!iter->end()) {
+        fmt::println("\033[33m *******************************************************************START OUTER LOOP {}:********************************************************************* \033[0m", loopNum);
         auto next = iter->next();
         if (!start) {
             start = true;
@@ -125,7 +150,8 @@ int main(int argc, char *argv[]) {
             fmt::print("[end of text]");
             break;
         }
-        fmt::print("{}", tokenizer.to_string(next, false));
+        fmt::println("\033[32m\n^^^^^^^^^^^^^^^^^^^^^^^^TEXT: {} (#{})^^^^^^^^^^^^^^^^^^^^^^^^\033[0m", tokenizer.to_string(next, false), next);
+        fmt::println("\033[33m *******************************************************************END OUTER LOOP {}:***********************************************************************\n\n\033[0m", loopNum++);
         fflush(stdout);
     }
     fmt::println("");
@@ -153,6 +179,12 @@ int main(int argc, char *argv[]) {
         spec_model->print_stat();
     }
 #endif
+
+    // speculative decoding cpu: ======================================
+    if (args.use_spec) {
+        spec_model->print_stat();
+    }
+    // ================================================================
 
     return 0;
 }

@@ -105,6 +105,9 @@ void TokenTree::draft(const ModelPtr &draft_model, const Tokenizer &tokenizer, s
     size_t n_nodes        = 0;
     size_t n_saved_tokens = 0;
     CausalAttentionMask mask(1);
+
+    int forwardTimesDraft = 0;
+
     while (n_nodes < batch_size) {
         bool is_leaf = main_heap.empty();
         auto &heap   = is_leaf ? leaf_heap : main_heap;
@@ -144,6 +147,7 @@ void TokenTree::draft(const ModelPtr &draft_model, const Tokenizer &tokenizer, s
         node.cache_index = draft_model->kv_cache->position;
 
         PerfettoTrace::begin("draft_model_forward");
+        fmt::println("\033[31m            (Inside TokenTree::draft()) Start forwarding in draft model: time {}\033[0m", ++forwardTimesDraft);
         auto ret = draft_model->forward({node.token}, {node.position}, CausalAttentionMask(1));
         PerfettoTrace::end();
 
@@ -169,6 +173,8 @@ void TokenTree::draft(const ModelPtr &draft_model, const Tokenizer &tokenizer, s
         }
     }
 
+    fmt::println("\033[31m            (Inside TokenTree::draft()) n_saved_tokens: {}; n_nodes: {}\033[0m", n_saved_tokens, n_nodes);
+
     stat.n_draft_times += n_saved_tokens;
     stat.n_draft_tokens += n_nodes - 1; // Exclude root token
     draft_model->kv_cache->rollback_tokens(n_saved_tokens);
@@ -183,6 +189,8 @@ void TokenTree::verify(
 ) {
     POWERSERVE_ASSERT(target_model->kv_cache->position == draft_model->kv_cache->position);
     stat.n_iterations += 1;
+
+    int tempNAcceptedTokens = 0;
 
     int u                     = 0;
     size_t n_generated_tokens = 0;
@@ -213,6 +221,9 @@ void TokenTree::verify(
         enqueue_token(next_token);
         n_generated_tokens += 1;
 
+        // Debug printing for generated token
+        fmt::println("\033[31m            (Inside TokenTree::verify()) Generated token by target model: (#{})\033[0m", next_token);
+
         auto it = std::find_if(node.children.begin(), node.children.end(), [next_token, this](int v) {
             return nodes[v].token == next_token;
         });
@@ -222,22 +233,70 @@ void TokenTree::verify(
         } else {
             u = *it;
             stat.n_accepted_tokens += 1;
+            ++tempNAcceptedTokens;
+
+            // Debug printing for accepted token
+            fmt::println("\033[31m            (Inside TokenTree::verify()) Accepted token by target model: (#{})\033[0m", nodes[u].token);
         }
     }
 
     stat.n_generated_tokens += n_generated_tokens;
     counter.set_value("#generated-token", n_generated_tokens);
+
+    fmt::println("\033[31m            (Inside TokenTree::verify()) n_generate_tokens: {}; stat.n_generated_tokens: {} \033[0m", n_generated_tokens, stat.n_generated_tokens);
+    fmt::println("\033[31m            (Inside TokenTree::verify()) n_accepted_tokens: {}; stat.n_accepted_tokens: {} \033[0m", tempNAcceptedTokens, stat.n_accepted_tokens);
+}
+
+// void TokenTree::print_tree(const Tokenizer &tokenizer, int u) {
+//     auto &node = nodes[u];
+//     auto piece = tokenizer.to_string(node.token);
+//     fmt::println("\033[34m{:{}}[{}] {:?} {:.2f}\033[0m", "", node.depth, (node.accepted ? "ACC" : "REJ"), piece, node.current_prob);
+//
+//     for (int v : node.children) {
+//         print_tree(tokenizer, v);
+//     }
+// }
+
+// ========================================================
+void TokenTree::print_tree_impl(const Tokenizer &tokenizer, int u, const std::string &prefix, bool is_last, bool is_root) {
+    auto &node = nodes[u];
+    auto piece = tokenizer.to_string(node.token);
+
+    if (is_root) {
+        // Print root node without any connectors
+        fmt::println("\033[34m[{}] {:?} {:.2f}\033[0m", (node.accepted ? "ACC" : "REJ"), piece, node.current_prob);
+
+        // Process children with base prefix
+        for (size_t i = 0; i < node.children.size(); ++i) {
+            bool child_is_last = (i == node.children.size() - 1);
+            print_tree_impl(tokenizer, node.children[i], "", child_is_last, false);
+        }
+    } else {
+        // Generate connector symbols
+        std::string connector = is_last ? "└── " : "├── ";
+        std::string color_code = "\033[34m";
+        std::string reset_code = "\033[0m";
+
+        // Print current node with hierarchical connectors
+        fmt::print("{}{}{}", color_code, prefix, connector);
+        fmt::print("[{}] {:?} {:.2f}{}\n", (node.accepted ? "ACC" : "REJ"), piece, node.current_prob, reset_code);
+
+        // Calculate new prefix for children
+        std::string extension = is_last ? "    " : "│   ";
+        std::string new_prefix = prefix + extension;
+
+        // Recursively print children
+        for (size_t i = 0; i < node.children.size(); ++i) {
+            bool child_is_last = (i == node.children.size() - 1);
+            print_tree_impl(tokenizer, node.children[i], new_prefix, child_is_last, false);
+        }
+    }
 }
 
 void TokenTree::print_tree(const Tokenizer &tokenizer, int u) {
-    auto &node = nodes[u];
-    auto piece = tokenizer.to_string(node.token);
-    fmt::println("{:{}}[{}] {:?} {:.2f}", "", node.depth, (node.accepted ? "*" : " "), piece, node.current_prob);
-
-    for (int v : node.children) {
-        print_tree(tokenizer, v);
-    }
+    print_tree_impl(tokenizer, u, "", true, true);
 }
+// ========================================================
 
 void TokenTree::print_stat() {
     fmt::println("Speculative token tree statistics:");

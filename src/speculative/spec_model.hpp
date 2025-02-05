@@ -45,14 +45,27 @@ public:
             return;
         }
         POWERSERVE_UNUSED(batch_size);
+        fmt::println("no bug inside 1......");
         auto prompt_tokens           = tokenizer.tokenize(prompt, tokenizer.m_vocab.tokenizer_add_bos);
         const size_t n_prompt_tokens = prompt_tokens.size();
         POWERSERVE_ASSERT(n_prompt_tokens >= 1);
+        fmt::println("no bug inside 2......");
 
         target_model->m_platform->reset_kv_position(target_model->m_config->model_id);
+        fmt::println("target model id: {}", target_model->m_config->model_id);
+        fmt::println("no bug inside 2.3......");
         draft_model->m_platform->reset_kv_position(draft_model->m_config->model_id);
+        fmt::println("draft model id: {}", draft_model->m_config->model_id);
+        fmt::println("no bug inside 2.4......");
         POWERSERVE_ASSERT(target_model->kv_cache->position == draft_model->kv_cache->position);
+        fmt::println("no bug inside 2.5......");
         size_t position = target_model->kv_cache->position;
+        fmt::println("no bug inside 3......");
+
+        // spec test: ================================================
+        // target_model->m_platform->ggml_backends[target_model->m_config->model_id]->setup_threadpool();
+        // draft_model->m_platform->ggml_backends[draft_model->m_config->model_id]->setup_threadpool();
+        // ===========================================================
 
         const size_t n_prefill_tokens = n_prompt_tokens - 1;
 
@@ -60,10 +73,13 @@ public:
 
         std::vector<int> prefill_positions(n_prefill_tokens);
         std::iota(prefill_positions.begin(), prefill_positions.end(), position);
+        fmt::println("no bug inside 4......");
 
         CausalAttentionMask prefill_attention_mask(n_prefill_tokens);
         target_model->forward(prefill_tokens, prefill_positions, prefill_attention_mask, false);
+        fmt::println("no bug inside 5......");
         draft_model->forward(prefill_tokens, prefill_positions, prefill_attention_mask, false);
+        fmt::println("no bug inside 6......");
 
         position = target_model->kv_cache->position;
         m_tokens.push_back(prompt_tokens.back());
@@ -74,14 +90,24 @@ public:
     virtual void decode() override {
         // TODO: decode
         if (n_rest > 0 && m_tokens.size() >= 1) {
+            fmt::print("\033[35m (Inside SpecTokenIterator::decode()) m_tokens.size() == {}\033[0m\n", m_tokens.size());
+
             if (m_tokens.size() == 1) {
                 auto last_token = m_tokens.back();
+                fmt::println("\033[35m (Inside SpecTokenIterator::decode()) reach m_tokens.size() == 1, go to generation logics; the last token is: {} (#{})\033[0m", m_tokenizer.to_string(last_token), last_token);
+
                 generate_tokens(m_tokenizer, m_sampler, last_token);
                 POWERSERVE_ASSERT(token_queue.size() > 0);
+
+                fmt::print("\033[35m     (Inside SpecTokenIterator::decode()) token queue: \033[0m");
                 for (auto token : token_queue) {
                     m_tokens.push_back(token);
+                    fmt::print("\033[35m {} (#{}), \033[0m", m_tokenizer.to_string(token), token);
                 }
                 token_queue.clear();
+                fmt::println("");
+            } else {
+                fmt::print("\033[35m     (Inside SpecTokenIterator::decode()) Skip forward for this iteration!\033[0m");
             }
 
             --n_rest;
@@ -98,6 +124,7 @@ private:
 
         CausalAttentionMask mask(config.draft_batch_size, token_tree.attention_mask());
 
+        fmt::println("\033[31m      (Inside TokenTree::generate_tokens()) Start forwarding in target model (slow!)\033[0m");
         auto ret = target_model->forward(token_tree.tokens(), token_tree.positions(), mask);
 
         target_model->kv_cache->rollback_tokens(config.draft_batch_size);
@@ -107,8 +134,9 @@ private:
         });
 
         if (config.token_tree.debug) {
-            fmt::print("\n");
+            fmt::print("\033[31m\n========================================DEBUG TOKEN TREE START=========================================\n\033[0m");
             token_tree.print_tree(tokenizer);
+            fmt::print("\033[31m\n========================================DEBUG TOKEN TREE END===========================================\n\033[0m");
         }
     }
 };

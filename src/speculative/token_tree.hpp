@@ -44,6 +44,7 @@ struct TokenTree {
     );
 
     // For debugging
+    void print_tree_impl(const Tokenizer &tokenizer, int u, const std::string &prefix, bool is_last, bool is_root);
     void print_tree(const Tokenizer &tokenizer, int u = 0);
     void print_stat();
 

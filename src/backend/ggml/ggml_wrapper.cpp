@@ -40,18 +40,31 @@ void GGMLBackend::matmul(const Tensor *dst, const Tensor *src0, const Tensor *sr
 }
 
 void GGMLBackend::rmsnorm(const Tensor *out, const Tensor *x, const Tensor *weight, float eps) const {
+    // fmt::println("no bug inside impl rmsnorm 0......");
     auto dst_tensor  = convert_to_ggml(out);
     auto src0_tensor = convert_to_ggml(x);
     auto src1_tensor = convert_to_ggml(weight);
+    // fmt::println("no bug inside impl rmsnorm 1......");
+
+    if (m_thread_pool == nullptr) {
+        fmt::println("m_thread_pool is empty!!");
+        exit(-114);
+    }
 
     m_thread_pool->run([&](size_t thread_id) {
+        // fmt::println("no bug inside impl rmsnorm 1.5......");
         op_compute_params params = m_params;
+        // fmt::println("no bug inside impl rmsnorm 1.6......");
 
         params.ith = thread_id;
+        // fmt::println("no bug inside impl rmsnorm 1.7......");
         params.nth = m_thread_pool->size();
+        // fmt::println("no bug inside impl rmsnorm 2......");
 
         powerserve_compute_forward_rms_norm(&params, dst_tensor.get(), src0_tensor.get(), src1_tensor.get(), eps);
+        // fmt::println("no bug inside impl rmsnorm 3......");
     });
+    // fmt::println("no bug inside impl rmsnorm 4......");
 }
 
 void GGMLBackend::softmax(const Tensor *out, const Tensor *x) const {
