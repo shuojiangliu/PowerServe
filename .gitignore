@@ -14,3 +14,8 @@ Pipfile
 tools/llama_tf_to_qnn_bin
 tools/process_image
 *.log
+
+.idea
+cmake-build-debug
+llama3.1-8b-instruct-model
+llama3.2-1b-instruct-model
