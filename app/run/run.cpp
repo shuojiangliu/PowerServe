@@ -119,7 +119,14 @@ int main(int argc, char *argv[]) {
 
         // speculative decoding cpu: =========================================
         spec_model = std::make_shared<powerserve::SpeculativeModel>(main_model, draft_model, args.speculative_config);
-        fmt::println("Not bug here2......");
+        fmt::println("\nNot bug here2......");
+        /**
+         * Note: There is a bug here: after spec_model->generate(), *one of* the thread pool will be freed,
+         * causing the subsequent execution failure (There is further code logic checking whether the thread pool is null).
+         * This might be related to the lifetime management of smart pointers in C++ or something else.
+         * As a temporary workaround, I have to call setup_threadpool() again after spec_model->generate().
+         * Therefore, some better way needs to be figured out to handle the management of thread pools.
+         */
         main_model->m_platform->ggml_backends[main_model->m_config->model_id]->setup_threadpool();
         draft_model->m_platform->ggml_backends[draft_model->m_config->model_id]->setup_threadpool();
         iter       = spec_model->generate(tokenizer, sampler, args.prompt, args.num_predict, batch_size);
@@ -135,11 +142,14 @@ int main(int argc, char *argv[]) {
 
     int loopNum = 1;
 
+    std::vector<powerserve::Token> token_printings;
+
     while (!iter->end()) {
         fmt::println("\033[33m *******************************************************************START OUTER LOOP {}:********************************************************************* \033[0m", loopNum);
         auto next = iter->next();
         if (!start) {
             start = true;
+            fmt::println("\033[33m *******************************************************************EARLY END OUTER LOOP {}:************************************************************* \n\n\033[0m", loopNum++);
             continue;
         }
         actual_predict += 1;
@@ -153,6 +163,14 @@ int main(int argc, char *argv[]) {
         fmt::println("\033[32m\n^^^^^^^^^^^^^^^^^^^^^^^^TEXT: {} (#{})^^^^^^^^^^^^^^^^^^^^^^^^\033[0m", tokenizer.to_string(next, false), next);
         fmt::println("\033[33m *******************************************************************END OUTER LOOP {}:***********************************************************************\n\n\033[0m", loopNum++);
         fflush(stdout);
+
+        token_printings.emplace_back(next);
+    }
+    fmt::println("");
+
+    fmt::println("\033[32mFinal Output: \033[0m");
+    for (auto& tk : token_printings) {
+        fmt::print("\033[32m{}\033[0m", tokenizer.to_string(tk, false));
     }
     fmt::println("");
 
