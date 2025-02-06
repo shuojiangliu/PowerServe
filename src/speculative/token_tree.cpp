@@ -264,7 +264,7 @@ void TokenTree::print_tree_impl(const Tokenizer &tokenizer, int u, const std::st
 
     if (is_root) {
         // Print root node without any connectors
-        fmt::println("\033[34m[{}] {:?} {:.2f}\033[0m", (node.accepted ? "ACC" : "REJ"), piece, node.current_prob);
+        fmt::println("\033[34m[{}] {:?}(#{}) {:.2f}\033[0m", (node.accepted ? "ACC" : "REJ"), piece, node.token, node.current_prob);
 
         // Process children with base prefix
         for (size_t i = 0; i < node.children.size(); ++i) {
@@ -279,7 +279,7 @@ void TokenTree::print_tree_impl(const Tokenizer &tokenizer, int u, const std::st
 
         // Print current node with hierarchical connectors
         fmt::print("{}{}{}", color_code, prefix, connector);
-        fmt::print("[{}] {:?} {:.2f}{}\n", (node.accepted ? "ACC" : "REJ"), piece, node.current_prob, reset_code);
+        fmt::print("[{}] {:?}(#{}) {:.2f}{}\n", (node.accepted ? "ACC" : "REJ"), piece, node.token, node.current_prob, reset_code);
 
         // Calculate new prefix for children
         std::string extension = is_last ? "    " : "│   ";
