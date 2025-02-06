@@ -64,7 +64,7 @@ struct CommandLineArgument {
     /*
      * Speculative
      */
-    bool use_spec = false;
+    bool use_spec = true;
 
     SpeculativeConfig speculative_config;
 
