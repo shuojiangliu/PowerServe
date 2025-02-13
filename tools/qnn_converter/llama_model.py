@@ -87,8 +87,8 @@ class LinearWithQuantizationDebugger(nn.Linear):
 
 
 # TODO: Add command line option for it.
-linear_class = nn.Linear  # Disable quantization debug
-# linear_class = LinearWithQuantizationDebugger
+# linear_class = nn.Linear  # Disable quantization debug
+linear_class = LinearWithQuantizationDebugger
 
 stat_output_folder = None
 # Uncomment the following line to enable activation stat profiling
