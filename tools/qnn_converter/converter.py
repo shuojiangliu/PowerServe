@@ -68,8 +68,9 @@ def main(args):
             --prompt-file {args.prompt_file} \
             --output-folder {args.build_folder} \
             --max-n-tokens {args.max_n_tokens} \
-            --n-model-chunks {args.n_model_chunks}"""
-        if args.fp16_lm_head:
+            --n-model-chunks {args.n_model_chunks} \
+            --soc {args.soc}"""
+        if args.fp16_lm_head and args.soc != "sa8295":
             onnx_command += " --fp16-lm-head"
         run_shell_command(onnx_command)
 
@@ -79,7 +80,8 @@ def main(args):
             --batch-size {i} \
             --n-model-chunks {args.n_model_chunks} \
             --artifact-name {args.artifact_name} \
-            --graph-names batch_{i}
+            --graph-names batch_{i} \
+            --soc {args.soc}
         """
         run_shell_command(generate_so_command)
 

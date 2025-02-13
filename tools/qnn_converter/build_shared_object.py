@@ -4,6 +4,8 @@ import os
 import subprocess
 from pathlib import Path
 
+from soc_config import soc_map
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=Path, required=True)
@@ -15,6 +17,7 @@ parser.add_argument("--artifact-name", type=str, required=True)
 parser.add_argument("--log-file", type=str, default="build_so.log")
 parser.add_argument("--graph-names", type=str, nargs="+", required=True)
 parser.add_argument("--generate-binary", type=bool)
+parser.add_argument("--soc", choices=soc_map.keys(), default="8gen3")
 args = parser.parse_args()
 
 output_folder: Path = args.output_folder
@@ -47,28 +50,49 @@ def run(cmd_args: list):
 def convert_model():
     converter_path = qnn_sdk_folder / "bin" / "x86_64-linux-clang" / "qnn-onnx-converter"
     assert converter_path.exists()
-
-    cmd_args = [
-        converter_path,
-        "--input_network",
-        model_path,
-        "--quantization_overrides",
-        encoding_path,
-        "--output_path",
-        cpp_path,
-        "--preserve_io layout",
-        "--bias_bitwidth 32",
-        "--act_bitwidth 16",
-        "--weights_bitwidth 4",
-        # '--no_simplification',
-        "--use_per_channel_quantization",
-        "--use_per_row_quantization",
-        # "--keep_weights_quantized",
-        "--param_quantizer_schema symmetric",
-        "--act_quantizer_schema asymmetric",
-        "--input_list",
-        input_list_path,
-    ]
+    
+    if args.soc == "sa8295":
+        print("Use SA8295 settings for ONNX converter...")
+        cmd_args = [
+            converter_path,
+            '--input_network',
+            model_path,
+            '--quantization_overrides',
+            encoding_path,
+            '--output_path',
+            cpp_path,
+            '--preserve_io layout',
+            '--no_simplification',
+            # '--use_per_channel_quantization',
+            '--use_per_row_quantization',
+            '--param_quantizer_schema symmetric',
+            '--act_quantizer_schema asymmetric',
+            '--keep_weights_quantized',
+            '--input_list', input_list_path,
+            #'--debug',
+        ]
+    else:
+        cmd_args = [
+            converter_path,
+            "--input_network",
+            model_path,
+            "--quantization_overrides",
+            encoding_path,
+            "--output_path",
+            cpp_path,
+            "--preserve_io layout",
+            "--bias_bitwidth 32",
+            "--act_bitwidth 16",
+            "--weights_bitwidth 4",
+            # '--no_simplification',
+            "--use_per_channel_quantization",
+            "--use_per_row_quantization",
+            # "--keep_weights_quantized",
+            "--param_quantizer_schema symmetric",
+            "--act_quantizer_schema asymmetric",
+            "--input_list",
+            input_list_path,
+        ]
 
     with open(io_spec_path, "r") as f:
         io_spec = json.load(f)

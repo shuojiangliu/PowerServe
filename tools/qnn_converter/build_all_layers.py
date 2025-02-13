@@ -53,6 +53,8 @@ def build_shared_object(chunk_id: int):
         f"{args.artifact_name}_{chunk_id}" if chunk_id == -1 else "lm_head",
         "--graph-names",
         " ".join(args.graph_names),
+        "--soc",
+        args.soc,
     ])
 
 

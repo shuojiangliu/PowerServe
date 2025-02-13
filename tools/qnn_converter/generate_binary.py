@@ -55,7 +55,7 @@ def generate_context_binary():
                 "soc_model": soc_map[args.soc].soc_id,
             },
         ],
-        "context": {"weight_sharing_enabled": True},
+        "context": {"weight_sharing_enabled": False if args.soc == "sa8295" else True},
     }
 
     htp_config = {

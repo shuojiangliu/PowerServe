@@ -14,6 +14,8 @@ from torch.nn.utils import skip_init
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
+from soc_config import *
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n-threads", type=int, default=1)
@@ -28,6 +30,7 @@ parser.add_argument("--quantize", action="store_true")
 parser.add_argument("--max-n-tokens", type=int, required=True)
 parser.add_argument("--output-folder", type=Path)
 parser.add_argument("--fp16-lm-head", action="store_true")
+parser.add_argument("--soc", choices=soc_map.keys(), default="8gen3")
 args = parser.parse_args()
 
 torch.manual_seed(42)
@@ -530,9 +533,9 @@ class LlamaModel(nn.Module):
                 for i, model_chunk in enumerate(self.model_chunks)
             ],
             "embeddings": [{
-                "graph_name": "",
+                "graph_name": "", # batch_1
                 "model_path": "lm_head.bin",
-                "batch_size": self.graph_params.batch_size,
+                "batch_size": self.graph_params.batch_size, # 1
                 "x_name": "x",
                 "out_name": "logits",
             }],
@@ -573,16 +576,29 @@ class OutputEmbeddingExporter:
 
     def export_io_spec(self):
         def dump_info_list(io_type: Literal["in", "out"], names: List[str], tensors: List[torch.Tensor]) -> List[dict]:
-            return [
-                {
-                    "name": name,
-                    "type": io_type,
-                    "dtype": "int64" if name == "input_ids" else "float32",
-                    "preserve_dtype": name in self.model_chunk.dtype_preserved_io_names,
-                    "shape": list(tensor.shape),
-                }
-                for name, tensor in zip(names, tensors)
-            ]
+            if args.soc != "sa8295":
+                return [
+                    {
+                        "name": name,
+                        "type": io_type,
+                        "dtype": "int64" if name == "input_ids" else "float32",
+                        "preserve_dtype": name in self.model_chunk.dtype_preserved_io_names,
+                        "shape": list(tensor.shape),
+                    }
+                    for name, tensor in zip(names, tensors)
+                ]
+            else:
+                print("Use SA8295 for export_io_spec")
+                return [
+                    {
+                        "name": name,
+                        "type": io_type,
+                        "dtype": "int64" if name == "input_ids" else "float32",
+                        "preserve_dtype": True,
+                        "shape": list(tensor.shape),
+                    }
+                    for name, tensor in zip(names, tensors)
+                ]
 
         io_spec = [
             *dump_info_list("in", self.model_chunk.input_names, self.model_chunk.saved_samples[0].inputs),
@@ -626,59 +642,76 @@ class OutputEmbeddingExporter:
 
         graph = self.onnx_model.graph
 
-        # Inputs
-        encode_activation("x", 32)
-        encode_activation("attn_bias", 16)
+        if args.soc != "sa8295":
+            # Inputs
+            encode_activation("x", 32)
+            encode_activation("attn_bias", 16)
 
-        # KV cache: FP16
-        for node in graph.input:
-            if match(node, "layer_[0-9]+_(key_t|value)_cache_[0-9]+"):
-                encode_activation(node, 16)
-        for node in graph.output:
-            if match(node, "layer_[0-9]+_(key|value)_[0-9]+"):
-                encode_activation(node, 16)
+            # KV cache: FP16
+            for node in graph.input:
+                if match(node, "layer_[0-9]+_(key_t|value)_cache_[0-9]+"):
+                    encode_activation(node, 16)
+            for node in graph.output:
+                if match(node, "layer_[0-9]+_(key|value)_[0-9]+"):
+                    encode_activation(node, 16)
 
-        # Attention core: FP16
-        for node in graph.node:
-            if match(node, "/layers\.[0-9]+/attn/core.*"):
-                encode_output(node, 16)
-
-        # Residual connection: FP32
-        for node in graph.node:
-            if match(node, "/layers\.[0-9]+/(attn|ffn|ffn/down_proj)/Add(_[0-9]+|)"):
-                encode_output(node, 32)
-
-        # RMSNorm: FP32
-        for node in graph.initializer:
-            if match(node, "layers\.[0-9]+\.(attn|ffn)\.norm\.weight"):
-                encode_param(node, 32, "float")
-        for node in graph.node:
-            # print(node)
-            if match(node, "/layers\.[0-9]+/(attn|ffn)/norm.*"):
-                encode_output(node, 32)
-            elif match(node, "/norm.*"):
-                encode_output(node, 32)
-
-        if self.use_fp16:
-            print("NOTE: Use FP16 for output embedding.")
-            for node in graph.initializer:
-                encode_param(node, 16, "float")
+            # Attention core: FP16
             for node in graph.node:
-                encode_output(node, 16)
+                if match(node, "/layers\.[0-9]+/attn/core.*"):
+                    encode_output(node, 16)
+
+            # Residual connection: FP32
+            for node in graph.node:
+                if match(node, "/layers\.[0-9]+/(attn|ffn|ffn/down_proj)/Add(_[0-9]+|)"):
+                    encode_output(node, 32)
+
+            # RMSNorm: FP32
+            for node in graph.initializer:
+                if match(node, "layers\.[0-9]+\.(attn|ffn)\.norm\.weight"):
+                    encode_param(node, 32, "float")
+            for node in graph.node:
+                # print(node)
+                if match(node, "/layers\.[0-9]+/(attn|ffn)/norm.*"):
+                    encode_output(node, 32)
+                elif match(node, "/norm.*"):
+                    encode_output(node, 32)
+
+            if self.use_fp16:
+                print("NOTE: Use FP16 for output embedding.")
+                for node in graph.initializer:
+                    encode_param(node, 16, "float")
+                for node in graph.node:
+                    encode_output(node, 16)
+        else:
+            print("Use SA8295, skip encode_activation for output embedding...")
 
         # Generate config
-        config = {
-            "version": "0.6.1",
-            "quantizer_args": {
-                "activation_bitwidth": 16,
-                "param_bitwidth": 4,
-                "dtype": "int",
-                "per_channel_quantization": True,
-                "quant_scheme": "post_training_tf",
-            },
-            "activation_encodings": {},
-            "param_encodings": {},
-        }
+        if args.soc != "sa8295":
+            config = {
+                "version": "0.6.1",
+                "quantizer_args": {
+                    "activation_bitwidth": 16,
+                    "param_bitwidth": 4,
+                    "dtype": "int",
+                    "per_channel_quantization": True,
+                    "quant_scheme": "post_training_tf",
+                },
+                "activation_encodings": {},
+                "param_encodings": {},
+            }
+        else:
+            config = {
+                'version': '0.6.1',
+                'quantizer_args': {
+                    'activation_bitwidth': 8,
+                    'param_bitwidth': 8,
+                    'dtype': 'int',
+                    'per_channel_quantization': False,
+                    'quant_scheme': 'post_training_tf',
+                },
+                'activation_encodings': {},
+                'param_encodings': {},
+            }
 
         for name, encoding in sorted(encoding_map.items(), key=lambda item: item[0]):
             config[f"{encoding.category}_encodings"][name] = [{
@@ -752,16 +785,29 @@ class ModelChunkExporter:
 
     def export_io_spec(self):
         def dump_info_list(io_type: Literal["in", "out"], names: List[str], tensors: List[torch.Tensor]) -> List[dict]:
-            return [
-                {
-                    "name": name,
-                    "type": io_type,
-                    "dtype": "float32",
-                    "preserve_dtype": name in self.model_chunk.dtype_preserved_io_names,
-                    "shape": list(tensor.shape),
-                }
-                for name, tensor in zip(names, tensors)
-            ]
+            if args.soc != "sa8295":
+                return [
+                    {
+                        "name": name,
+                        "type": io_type,
+                        "dtype": "float32",
+                        "preserve_dtype": name in self.model_chunk.dtype_preserved_io_names,
+                        "shape": list(tensor.shape),
+                    }
+                    for name, tensor in zip(names, tensors)
+                ]
+            else:
+                print("Use sa8295 for export_io_spec")
+                return [
+                    {
+                        "name": name,
+                        "type": io_type,
+                        "dtype": "float32",
+                        "preserve_dtype": True,
+                        "shape": list(tensor.shape),
+                    }
+                    for name, tensor in zip(names, tensors)
+                ]
 
         io_spec = [
             *dump_info_list("in", self.model_chunk.input_names, self.model_chunk.saved_samples[0].inputs),
@@ -806,94 +852,112 @@ class ModelChunkExporter:
         graph = self.onnx_model.graph
 
         # Inputs
-        encode_activation("x", 32)
-        encode_activation("attn_bias", 16)
-        encode_activation("rope_embed_cos", 16)
-        encode_activation("rope_embed_sin", 16)
+        if args.soc != "sa8295":
+            encode_activation("x", 32)
+            encode_activation("attn_bias", 16)
+            encode_activation("rope_embed_cos", 16)
+            encode_activation("rope_embed_sin", 16)
 
         # KV cache: FP16
-        for node in graph.input:
-            if match(node, "layer_[0-9]+_(key_t|value)_cache_[0-9]+"):
-                encode_activation(node, 16)
-        for node in graph.output:
-            if match(node, "layer_[0-9]+_(key|value)_[0-9]+"):
-                encode_activation(node, 16)
+        if args.soc != "sa8295":
+            for node in graph.input:
+                if match(node, "layer_[0-9]+_(key_t|value)_cache_[0-9]+"):
+                    encode_activation(node, 16)
+            for node in graph.output:
+                if match(node, "layer_[0-9]+_(key|value)_[0-9]+"):
+                    encode_activation(node, 16)
 
-        # Attention core: FP16
-        for node in graph.node:
-            if match(node, "/layers\.[0-9]+/attn/core.*"):
-                encode_output(node, 16)
-
-        # Manually specified FP16 attention/FFN layers
-        for layer_type in ["attn", "ffn"]:
-            layer_id_list = self.fp16_overrides[layer_type]
-
-            for layer_id in layer_id_list:
-                if not (self.model_chunk.start_layer_id <= layer_id < self.model_chunk.end_layer_id):
-                    continue
-
-                # NOTE: Layer ids in an ONNX model are always started from 0
-                count = 0
-                index = layer_id - self.model_chunk.start_layer_id
-                for node in graph.initializer:
-                    if match(node, f"layers\.{index}\.{layer_type}.*"):
-                        count += 1
-                        encode_param(node, 16, "float")
-                for node in graph.node:
-                    if match(node, f"/layers\.{index}/{layer_type}.*"):
-                        count += 1
-                        encode_output(node, 16)
-                print(f'Override {count} nodes in layer "{layer_type}_{layer_id}" to FP16')
-
-        if self.fp16_overrides["rope"] == True:
-            print("Use FP16 for attention RoPE.")
+            # Attention core: FP16
             for node in graph.node:
-                if "/attn/rope" in node.name:
+                if match(node, "/layers\.[0-9]+/attn/core.*"):
                     encode_output(node, 16)
 
-        # Residual connection: FP32
-        for node in graph.node:
-            if match(node, "/layers\.[0-9]+/(attn|ffn|ffn/down_proj)/Add(_[0-9]+|)"):
-                encode_output(node, 32)
+            # Manually specified FP16 attention/FFN layers
+            for layer_type in ["attn", "ffn"]:
+                layer_id_list = self.fp16_overrides[layer_type]
 
-        # RMSNorm: FP32
-        for node in graph.initializer:
-            if match(node, "layers\.[0-9]+\.(attn|ffn)\.norm\.weight"):
-                encode_param(node, 32, "float")
-        for node in graph.node:
-            if match(node, "/layers\.[0-9]+/(attn|ffn)/norm.*"):
-                encode_output(node, 32)
+                for layer_id in layer_id_list:
+                    if not (self.model_chunk.start_layer_id <= layer_id < self.model_chunk.end_layer_id):
+                        continue
 
-        # FP16 components
-        for node in graph.initializer:
-            if "fp16_" in node.name:
-                encode_param(node, 16, "float")
-        for node in graph.node:
-            if "fp16_" in node.name:
-                encode_output(node, 16)
+                    # NOTE: Layer ids in an ONNX model are always started from 0
+                    count = 0
+                    index = layer_id - self.model_chunk.start_layer_id
+                    for node in graph.initializer:
+                        if match(node, f"layers\.{index}\.{layer_type}.*"):
+                            count += 1
+                            encode_param(node, 16, "float")
+                    for node in graph.node:
+                        if match(node, f"/layers\.{index}/{layer_type}.*"):
+                            count += 1
+                            encode_output(node, 16)
+                    print(f'Override {count} nodes in layer "{layer_type}_{layer_id}" to FP16')
 
-        if self.fp16_overrides["qkv_heads"] == True:
-            print("Use FP16 for QKV heads.")
+            if self.fp16_overrides["rope"] == True:
+                print("Use FP16 for attention RoPE.")
+                for node in graph.node:
+                    if "/attn/rope" in node.name:
+                        encode_output(node, 16)
+
+            # Residual connection: FP32
+            for node in graph.node:
+                if match(node, "/layers\.[0-9]+/(attn|ffn|ffn/down_proj)/Add(_[0-9]+|)"):
+                    encode_output(node, 32)
+
+            # RMSNorm: FP32
             for node in graph.initializer:
-                if match(node, ".*[qkv]_heads.*"):
+                if match(node, "layers\.[0-9]+\.(attn|ffn)\.norm\.weight"):
+                    encode_param(node, 32, "float")
+            for node in graph.node:
+                if match(node, "/layers\.[0-9]+/(attn|ffn)/norm.*"):
+                    encode_output(node, 32)
+
+            # FP16 components
+            for node in graph.initializer:
+                if "fp16_" in node.name:
                     encode_param(node, 16, "float")
             for node in graph.node:
-                if match(node, ".*[qkv]_heads.*"):
+                if "fp16_" in node.name:
                     encode_output(node, 16)
 
+            if self.fp16_overrides["qkv_heads"] == True:
+                print("Use FP16 for QKV heads.")
+                for node in graph.initializer:
+                    if match(node, ".*[qkv]_heads.*"):
+                        encode_param(node, 16, "float")
+                for node in graph.node:
+                    if match(node, ".*[qkv]_heads.*"):
+                        encode_output(node, 16)
+        else:
+            print("Using SA8295, skip encode_activation....")
+
         # Generate config
-        config = {
-            "version": "0.6.1",
-            "quantizer_args": {
-                "activation_bitwidth": 16,
-                "param_bitwidth": 4,
-                "dtype": "int",
-                "per_channel_quantization": True,
-                "quant_scheme": "post_training_tf",
-            },
-            "activation_encodings": {},
-            "param_encodings": {},
-        }
+        if args.soc != "sa8295":
+            config = {
+                "version": "0.6.1",
+                "quantizer_args": {
+                    "activation_bitwidth": 16,
+                    "param_bitwidth": 4,
+                    "dtype": "int",
+                    "per_channel_quantization": True,
+                    "quant_scheme": "post_training_tf",
+                },
+                "activation_encodings": {},
+                "param_encodings": {},
+            }
+        else:
+            config = {
+                'version': '0.6.1',
+                'quantizer_args': {
+                    'activation_bitwidth': 8,
+                    'param_bitwidth': 8,
+                    'dtype': 'int',
+                    'per_channel_quantization': False,
+                    'quant_scheme': 'post_training_tf',
+                },
+                'activation_encodings': {},
+                'param_encodings': {},
+            }
 
         for name, encoding in sorted(encoding_map.items(), key=lambda item: item[0]):
             config[f"{encoding.category}_encodings"][name] = [{
