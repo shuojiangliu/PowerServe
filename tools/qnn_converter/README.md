@@ -14,6 +14,8 @@
         ```sh
         export PYTHON_VENV_PATH=/path/to/python/virtual/environment
         source $PYTHON_VENV_PATH/bin/activate
+        
+        # Under the directory of qnn converter tools
         pip install -r requirements.txt
         ```
 2. Run the one-click conversion script to complete the conversion
@@ -23,10 +25,10 @@
     --model-name llama3_2_1b \
     --system-prompt-file system_prompt_llama.txt \
     --prompt-file lab_intro_llama.md \
-    --batch-sizes 1 128 \
+    --batch-sizes 1 \
     --artifact-name llama3_2_1b \
-    --n-model-chunk 1 \
-    --soc 8gen3
+    --n-model-chunk 4 \
+    --soc sa8295
     # Note:
     # 1. System-prompt-file and lab_intro_llama.md should be adjusted based on whether it is an Instruct model and the model template
     # 2. The number of batch sizes supports up to two.
