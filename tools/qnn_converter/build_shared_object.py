@@ -69,7 +69,7 @@ def convert_model():
             '--act_quantizer_schema asymmetric',
             '--keep_weights_quantized',
             '--input_list', input_list_path,
-            #'--debug',
+            '--debug',
         ]
     else:
         cmd_args = [
@@ -134,6 +134,7 @@ def generate_library():
         graph_name,
         "--output_dir",
         output_folder,
+        '--debug',
     ]
 
     run(cmd_args)
