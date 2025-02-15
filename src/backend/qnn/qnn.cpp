@@ -347,33 +347,35 @@ void HTPDevice::enter_performance_mode() {
             },
     };
 
-    QnnHtpPerfInfrastructure_PowerConfig_t hmx_config = {
-        .option = QNN_HTP_PERF_INFRASTRUCTURE_POWER_CONFIGOPTION_HMX_V2,
-        .hmxV2Config =
-            {
-                .hmxPickDefault         = 0,
-                .hmxVoltageCornerMin    = DCVS_EXP_VCORNER_MAX,
-                .hmxVoltageCornerTarget = DCVS_EXP_VCORNER_MAX,
-                .hmxVoltageCornerMax    = DCVS_EXP_VCORNER_MAX,
-                .hmxPerfMode            = QNN_HTP_PERF_INFRASTRUCTURE_CLK_PERF_HIGH,
-            },
-    };
+    // commented out for 8295
+    // QnnHtpPerfInfrastructure_PowerConfig_t hmx_config = {
+    //     .option = QNN_HTP_PERF_INFRASTRUCTURE_POWER_CONFIGOPTION_HMX_V2,
+    //     .hmxV2Config =
+    //         {
+    //             .hmxPickDefault         = 0,
+    //             .hmxVoltageCornerMin    = DCVS_EXP_VCORNER_MAX,
+    //             .hmxVoltageCornerTarget = DCVS_EXP_VCORNER_MAX,
+    //             .hmxVoltageCornerMax    = DCVS_EXP_VCORNER_MAX,
+    //             .hmxPerfMode            = QNN_HTP_PERF_INFRASTRUCTURE_CLK_PERF_HIGH,
+    //         },
+    // };
 
     QnnHtpPerfInfrastructure_PowerConfig_t rpc_ctrl_config = {
         .option                  = QNN_HTP_PERF_INFRASTRUCTURE_POWER_CONFIGOPTION_RPC_CONTROL_LATENCY,
         .rpcControlLatencyConfig = 100,
     };
 
-    QnnHtpPerfInfrastructure_PowerConfig_t rpc_poll_config = {
-        .option               = QNN_HTP_PERF_INFRASTRUCTURE_POWER_CONFIGOPTION_RPC_POLLING_TIME,
-        .rpcPollingTimeConfig = 9999,
-    };
+    // commented out for 8295
+    // QnnHtpPerfInfrastructure_PowerConfig_t rpc_poll_config = {
+    //     .option               = QNN_HTP_PERF_INFRASTRUCTURE_POWER_CONFIGOPTION_RPC_POLLING_TIME,
+    //     .rpcPollingTimeConfig = 9999,
+    // };
 
     const QnnHtpPerfInfrastructure_PowerConfig_t *power_configs[] = {
         &dcvs_v3_config,
-        &hmx_config,
+        // &hmx_config,
         &rpc_ctrl_config,
-        &rpc_poll_config,
+        // &rpc_poll_config,
         nullptr,
     };
     auto ret = m_perf_infra.setPowerConfig(m_power_config_id, power_configs);

@@ -133,7 +133,9 @@ auto ModelChunk::n_layers() const -> size_t {
 void ModelChunk::setup_tensors() {
     auto head_dim = m_model_config.llm.head_size;
     setup_tensor("x", {m_config.batch_size, m_model_config.llm.dim}, QNN_DATATYPE_FLOAT_32);
-    setup_tensor("attn_bias", {m_config.batch_size, m_config.context_size}, QNN_DATATYPE_FLOAT_16);
+    // setup_tensor("attn_bias", {m_config.batch_size, m_config.context_size}, QNN_DATATYPE_FLOAT_16);
+    // change for 8295
+    setup_tensor("attn_bias", {m_config.batch_size, m_config.context_size}, QNN_DATATYPE_FLOAT_32);
     setup_tensor("rope_embed_cos", {m_config.batch_size, head_dim / 2}, QNN_DATATYPE_FLOAT_32);
     setup_tensor("rope_embed_sin", {m_config.batch_size, head_dim / 2}, QNN_DATATYPE_FLOAT_32);
 
@@ -157,12 +159,16 @@ void ModelChunk::setup_tensors() {
             setup_tensor(
                 fmt::format("layer_{}_key_{}", m_config.start_layer_id + i, j),
                 {m_config.batch_size, head_dim},
-                QNN_DATATYPE_FLOAT_16
+                //QNN_DATATYPE_FLOAT_16
+                // change for 8295
+                QNN_DATATYPE_FLOAT_32
             );
             setup_tensor(
                 fmt::format("layer_{}_value_{}", m_config.start_layer_id + i, j),
                 {m_config.batch_size, head_dim},
-                QNN_DATATYPE_FLOAT_16
+                //QNN_DATATYPE_FLOAT_16
+                // change for 8295
+                QNN_DATATYPE_FLOAT_32
             );
         }
     }
@@ -176,7 +182,9 @@ void ModelChunk::initialize(KVCacheInterface &kv_cache) {
     }
 
     // Initialize attn_bias with mask values
-    auto attn_bias = (__fp16 *)m_buffers["attn_bias"]->m_data;
+    // auto attn_bias = (__fp16 *)m_buffers["attn_bias"]->m_data;
+    // change for 8295
+    auto attn_bias = (float *)m_buffers["attn_bias"]->m_data;
     std::fill(attn_bias, attn_bias + m_tensors["attn_bias"]->n_elements(), m_parent.m_config.attention_mask_value);
 }
 
@@ -252,7 +260,9 @@ void ModelChunk::load_kv(KVCacheInterface &kv_cache) {
                 .n_elements   = head_dim,
                 .element_size = kv_element_size,
                 .stride       = kv_element_size,
-                .data         = fp16_data.data() + i * head_dim,
+                // .data         = fp16_data.data() + i * head_dim,
+                // change for 8295
+                .data         = binary_buffer.data() + i * head_dim,
             });
         }
     };

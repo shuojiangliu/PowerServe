@@ -76,7 +76,9 @@ struct KVView {
             #pragma unroll(4)
             // clang-format on
             for (size_t i = 0; i < n_elements; i++) {
-                *(uint32_t *)dst = *(uint32_t *)src;
+                // *(uint32_t *)dst = *(uint32_t *)src;
+                // change for 8295
+                *(float *)dst = *(float *)src;
                 src += other.stride;
                 dst += stride;
             }

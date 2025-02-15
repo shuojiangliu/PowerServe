@@ -67,7 +67,9 @@ struct Embedding : GraphInterface {
 };
 
 struct ModelChunk : GraphInterface {
-    static constexpr auto kv_type           = QNN_DATATYPE_FLOAT_16;
+    // static constexpr auto kv_type           = QNN_DATATYPE_FLOAT_16;
+    // change for 8295
+    static constexpr auto kv_type           = QNN_DATATYPE_FLOAT_32;
     static constexpr size_t kv_element_size = type_size(kv_type);
 
     ChunkConfig &m_config;

@@ -97,21 +97,23 @@ void CausalLM::load_model_chunks() {
         return a->batch_size == b->batch_size ? a->start_layer_id < b->start_layer_id : a->batch_size > b->batch_size;
     };
     std::sort(chunk_configs.begin(), chunk_configs.end(), cmp);
-    std::unique_ptr<SharedBufferAllocator> dummy_alloc;
-    std::unique_ptr<SharedBuffer> dummy_buffer;
-    constexpr size_t dummy_sizes[] = {1024 * 1024 * 512, 1024 * 1024 * 256, 1024 * 1024 * 128};
-    for (auto dummy_size : dummy_sizes) {
-        try {
-            dummy_alloc          = std::make_unique<SharedBufferAllocator>(dummy_size);
-            auto &context_binary = load_context_binary(chunk_configs[0]->model_path);
-            dummy_buffer =
-                std::make_unique<SharedBuffer>(*context_binary.m_context, *dummy_alloc, QNN_DATATYPE_INT_8, dummy_size);
-            break;
-        } catch (const std::runtime_error &e) {
-            dummy_alloc.reset(nullptr);
-            dummy_buffer.reset(nullptr);
-        }
-    }
+
+    // commented out for 8295
+    // std::unique_ptr<SharedBufferAllocator> dummy_alloc;
+    // std::unique_ptr<SharedBuffer> dummy_buffer;
+    // constexpr size_t dummy_sizes[] = {1024 * 1024 * 512, 1024 * 1024 * 256, 1024 * 1024 * 128};
+    // for (auto dummy_size : dummy_sizes) {
+    //     try {
+    //         dummy_alloc          = std::make_unique<SharedBufferAllocator>(dummy_size);
+    //         auto &context_binary = load_context_binary(chunk_configs[0]->model_path);
+    //         dummy_buffer =
+    //             std::make_unique<SharedBuffer>(*context_binary.m_context, *dummy_alloc, QNN_DATATYPE_INT_8, dummy_size);
+    //         break;
+    //     } catch (const std::runtime_error &e) {
+    //         dummy_alloc.reset(nullptr);
+    //         dummy_buffer.reset(nullptr);
+    //     }
+    // }
     for (auto config : chunk_configs) {
         auto &chunks = m_chunks_map[config->batch_size];
         chunks.emplace_back(std::make_unique<ModelChunk>(*this, *config));
@@ -123,8 +125,11 @@ void CausalLM::load_model_chunks() {
     kv_cache         = std::make_unique<KVCache<CausalLMKV>>(
         m_model_config->llm.n_layers, m_model_config->llm.n_kv_heads, m_gparams.cache_size, *this, max_chunks
     );
-    dummy_buffer.reset(nullptr);
-    dummy_alloc.reset(nullptr);
+
+    // commented out for 8295
+    // dummy_buffer.reset(nullptr);
+    // dummy_alloc.reset(nullptr);
+
     for (size_t i = 0; i < max_chunks.size(); i++) {
         auto &max_chunk = *max_chunks[i];
 
@@ -205,12 +210,16 @@ void CausalLM::fill_rope_embeds(std::span<const size_t> pos) {
 }
 
 void CausalLM::fill_attention_mask(AttentionMaskView mask) {
-    __fp16 mask_value = m_config.attention_mask_value;
+    // __fp16 mask_value = m_config.attention_mask_value;
+    // change for 8295
+    float mask_value = m_config.attention_mask_value;
 
     for (auto &chunk_ptr : largest_chunks()) {
         auto &chunk = *chunk_ptr;
         for (size_t i = 0; i < mask.size; i++) {
-            auto attn_bias = (__fp16 *)chunk.m_buffers.at("attn_bias")->m_data + i * m_gparams.context_size;
+            // auto attn_bias = (__fp16 *)chunk.m_buffers.at("attn_bias")->m_data + i * m_gparams.context_size;
+            // change for 8295
+            auto attn_bias = (float *)chunk.m_buffers.at("attn_bias")->m_data + i * m_gparams.context_size;
             for (size_t j = 0; j < mask.size; j++) {
                 attn_bias[m_gparams.cache_size + j] = mask.not_masked(i, j) ? 0 : mask_value;
             }

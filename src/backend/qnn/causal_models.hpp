@@ -118,12 +118,16 @@ struct CausalLM {
         }
 
         ALWAYS_INLINE void set_mask(size_t cache_index, bool mask) {
-            __fp16 fill_value = mask ? parent.m_config.attention_mask_value : 0;
+            // __fp16 fill_value = mask ? parent.m_config.attention_mask_value : 0;
+            // change for 8295
+            float fill_value = mask ? parent.m_config.attention_mask_value : 0;
             POWERSERVE_ASSERT(cache_index < chunks[0]->m_config.cache_size);
 
             for (auto &chunk : chunks) {
                 for (size_t i = 0; i < chunk->m_config.batch_size; i++) {
-                    auto attn_bias = (__fp16 *)chunk->m_buffers["attn_bias"]->m_data + i * chunk->m_config.context_size;
+                    // auto attn_bias = (__fp16 *)chunk->m_buffers["attn_bias"]->m_data + i * chunk->m_config.context_size;
+                    // change for 8295
+                    auto attn_bias = (float *)chunk->m_buffers["attn_bias"]->m_data + i * chunk->m_config.context_size;
                     attn_bias[cache_index] = fill_value;
                 }
             }
