@@ -14,3 +14,11 @@ Pipfile
 tools/llama_tf_to_qnn_bin
 tools/process_image
 *.log
+
+**/llama3_2_1b_build*
+**/llama3_2_1b_output*
+**/llama3_2_1b*
+*.raw
+log*.txt
+
+working_directory
