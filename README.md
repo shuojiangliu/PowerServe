@@ -35,16 +35,32 @@ We test these speeds with files in `./assets/prompts`as input prompt files. More
 
 ## Table of Contents
 
-1. [End to end deployment](#end-to-end)
-2. [Prerequisites](#prerequisites)
-3. [Directory Structure](#directory-structure)
-4. [Model Preparation](#model-preparation)
-5. [Compile PowerServe](#compile-powerserve)
-6. [Prepare PowerServe Workspace](#prepare-powerserve-workspace)
-7. [Execution](#execution)
-8. [Known Issues](#known-issues)
+- [PowerServe](#powerserve)
+  - [Features](#features)
+  - [Supported Models](#supported-models)
+  - [News](#news)
+  - [Table of Contents](#table-of-contents)
+  - [End to End Deployment](#end-to-end-deployment)
+  - [Prerequisites](#prerequisites)
+  - [directory-structure](#directory-structure)
+  - [Model Preparation](#model-preparation)
+    - [Convert Models For CPU](#convert-models-for-cpu)
+    - [Convert Models For NPU](#convert-models-for-npu)
+  - [Compile PowerServe](#compile-powerserve)
+    - [Build for Linux cpu](#build-for-linux-cpu)
+    - [Build for Android cpu](#build-for-android-cpu)
+    - [Build for Android qnn (For SA8295, use this)](#build-for-android-qnn-for-sa8295-use-this)
+  - [Prepare PowerServe Workspace](#prepare-powerserve-workspace)
+  - [Execution](#execution)
+    - [CLI](#cli)
+    - [Server](#server)
+  - [Known Issues](#known-issues)
+    - [Model Conversion](#model-conversion)
+    - [Execution](#execution-1)
 
 ## End to End Deployment
+
+> **Note: Please do not try to use "End to End Deployment" due to its lack of support for SA8295.**
 
 We provide nearly one-click end to end deployment document(./docs/end_to_end.md), including model downloading, compiling, deploying, and running.
 
@@ -111,7 +127,9 @@ powerserve
 
 ## Model Preparation
 
-For CPU-only execution, only `Models For CPU` is required. For NPU execution, both `Models For CPU` and `Models For NPU` is required.
+> **Note: For all the subsequent steps, please use a smaller LLM like Llama3.2-1b rather than big models like Llama3.1-8b for SA8295.**
+
+~~For CPU-only execution, only `Models For CPU` is required. For NPU execution, both `Models For CPU` and `Models For NPU` is required.~~
 
 Take llama3.1-8b-instruct model as example, the structure of model folder:
 ```shell
@@ -151,6 +169,8 @@ Take llama3.1-8b-instruct model as example, the structure of model folder:
 
 ### Convert Models For CPU
 
+> Please skip this step if you are using SA8295.
+
 ```shell
 # Under the root directory of PowerServe
 python ./tools/gguf_export.py -m <hf-model> -o models/llama3.1-8b-instruct
@@ -163,7 +183,8 @@ If you just want to run PowerServe on CPUs, this step can be skipped. More detai
 
 ```shell
 # Under the root directory of PowerServe
-cd powerserve/tools/qnn_converter
+# Go to the directory of qnn converter tools (required)
+cd ./tools/qnn_converter
 
 # This may take a long time...
 python converter.py                                 \
@@ -176,7 +197,7 @@ python converter.py                                 \
     --n-model-chunk 4                               \
     --output-folder ./llama3.1-8b-QNN               \
     --build-folder ./llama3.1-8b-QNN-tmp            \
-    --soc 8gen4
+    --soc sa8295
 
 ```
 Convert GGUF models and integrate them with QNN models
@@ -214,7 +235,7 @@ cmake -B build                                                      \
 cmake --build build
 ```
 
-### Build for Android qnn
+### Build for Android qnn (For SA8295, use this)
 - ❗️ Because the llama3.1-8b model is too large, qnn needs to open multiple sessions when loading. We conducted tests on 4 mobile phones. Among them, one plus 12, one plus 13 and Xiaomi 14 need to be updated to android 15 to apply for additional sessions in non-root mode, while honor Magic6 updates to android 15 to run in non-root mode will cause an error.
 
 ```shell
@@ -223,7 +244,7 @@ cmake -B build                                                      \
     -DCMAKE_BUILD_TYPE=Release                                      \
     -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
     -DANDROID_ABI=arm64-v8a                                         \
-    -DANDROID_PLATFORM=android-35                                   \
+    -DANDROID_PLATFORM=android-33                                   \
     -DGGML_OPENMP=OFF                                               \
     -DPOWERSERVE_WITH_QNN=ON
 
@@ -235,15 +256,24 @@ cmake --build build
 
 ```shell
 # Under the root directory of PowerServe
-mkdir -p models
-
 # Generate PowerServe Workspace
-./powerserve create -m ./llama3.1-8b-instruct-model --exe-path ./build/out -o ./models/llama3.1-8b-instruct
+./powerserve create -m ./llama3.1-8b-instruct-model --exe-path ./build/out -o ./models
+```
+
+***For SA8295, you also need to perform these extra steps after preparing for the workspace:***
+
+```shell
+# Under the root directory of PowerServe
+# where $HEXAGON_SDK_ROOT is the install location of Hexagon SDK tools (for example, "/opt/qcom/Hexagon_SDK/4.5.0.4")
+# and the version number "8.5.08" may need to be changed based on you installation
+cp $HEXAGON_SDK_ROOT/tools/HEXAGON_Tools/8.5.08/Tools/target/hexagon/lib/v68/G0/pic/libc++.so.1 ./models
+cp $HEXAGON_SDK_ROOT/tools/HEXAGON_Tools/8.5.08/Tools/target/hexagon/lib/v68/G0/pic/libc++abi.so.1 ./models
 ```
 
 ## Execution
 
 ### CLI
+
 More details please refer to [CLI App](./app/run/README.md)
 
 For pure CPU execution
@@ -252,9 +282,12 @@ For pure CPU execution
 ./models/llama3.1-8b-instruct/bin/powerserve-run --work-folder ./models/llama3.1-8b-instruct --prompt "Once upon a time, there was a little girl named Lucy" --no-qnn
 ```
 For NPU execution
+
+> **Note: Please use the workspace directory to target device using `adb push` before execution.**
+
 ```shell
-# Under the root directory of PowerServe
-export LD_LIBRARY_PATH=/system/lib64:/vendor/lib64 && ./models/llama3.1-8b-instruct/bin/powerserve-run --work-folder ./models/llama3.1-8b-instruct --prompt "Once upon a time, there was a little girl named Lucy"
+# Under the root directory of the workspace you just pushed to target device
+export LD_LIBRARY_PATH=/system/lib64:/vendor/lib64 && ./models/bin/powerserve-run --work-folder . --prompt "Once upon a time, there was a little girl named Lucy"
 ```
 
 ### Server
