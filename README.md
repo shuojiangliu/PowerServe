@@ -131,7 +131,7 @@ powerserve
 
 ~~For CPU-only execution, only `Models For CPU` is required. For NPU execution, both `Models For CPU` and `Models For NPU` is required.~~
 
-Take llama3.1-8b-instruct model as example, the structure of model folder:
+Take llama3.1-8b-instruct model as example, the final structure of the workspace folder should be:
 ```shell
 -- models                       # Level-1 dir, where server search different models and CLI search for runtime configurations
     -- hparams.json                 # Hyper params, containing #threads, #batch_size and sampler configurations.
@@ -205,6 +205,8 @@ Convert GGUF models and integrate them with QNN models
 Note: this scripts can only create fp32 and q8_0 in ./llama3.1-8b-instruct-model/ggml/weights.gguf,
 if you want to use q4_0, please use llama-quantize in llama.cpp like: `./build/bin/llama-quantize --pure /<path>/llama3.1-fp32.gguf Q4_0`, then replace weight file: `cp /<path>/ggml-model-Q4_0.gguf ./llama3.1-8b-instruct-model/ggml/weights.gguf`
 
+Then, execute this command:
+
 ```shell
 # Under the root directory of PowerServe
 python ./tools/gguf_export.py -m <hf-llama3.1-model> --qnn-path tools/qnn_converter/llama3.1-8b-QNN -o ./llama3.1-8b-instruct-model
@@ -270,6 +272,8 @@ cp $HEXAGON_SDK_ROOT/tools/HEXAGON_Tools/8.5.08/Tools/target/hexagon/lib/v68/G0/
 cp $HEXAGON_SDK_ROOT/tools/HEXAGON_Tools/8.5.08/Tools/target/hexagon/lib/v68/G0/pic/libc++abi.so.1 ./models
 ```
 
+Then the `models` directory will be our workspace directory to be uploaded to target device.
+
 ## Execution
 
 ### CLI
@@ -281,13 +285,13 @@ For pure CPU execution
 # Under the root directory of PowerServe
 ./models/llama3.1-8b-instruct/bin/powerserve-run --work-folder ./models/llama3.1-8b-instruct --prompt "Once upon a time, there was a little girl named Lucy" --no-qnn
 ```
-For NPU execution
+**For NPU execution (For SA8295, use this)**
 
-> **Note: Please use the workspace directory to target device using `adb push` before execution.**
+> **Note: Please upload the workspace directory to target device using `adb push` before execution.**
 
 ```shell
 # Under the root directory of the workspace you just pushed to target device
-export LD_LIBRARY_PATH=/system/lib64:/vendor/lib64 && ./models/bin/powerserve-run --work-folder . --prompt "Once upon a time, there was a little girl named Lucy"
+export LD_LIBRARY_PATH=/system/lib64:/vendor/lib64 && ./bin/powerserve-run --work-folder . --prompt "Once upon a time, there was a little girl named Lucy"
 ```
 
 ### Server
