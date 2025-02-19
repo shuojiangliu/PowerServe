@@ -69,7 +69,7 @@ class Llama3_2_1B_Params(ModelParams):
 
     rope_theta = 5e5
     rms_norm_eps = 1e-5
-    attention_mask_value = -1e5
+    attention_mask_value = -1e2
 
     fp16_attention_layers = []
     fp16_ffn_layers = []
