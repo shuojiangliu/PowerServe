@@ -18,7 +18,16 @@ tools/process_image
 **/llama3_2_1b_build*
 **/llama3_2_1b_output*
 **/llama3_2_1b*
+**/qwen2_0.5b_build*
+**/qwen2_0.5b_output*
+**/qwen2_0.5b
 *.raw
 log*.txt
 
 working_directory
+
+llama1b_precompiled
+zip_files
+models2
+models3
+
