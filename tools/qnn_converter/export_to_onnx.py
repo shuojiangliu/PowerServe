@@ -806,7 +806,7 @@ class ModelChunkExporter:
                         "preserve_dtype": True,
                         "shape": list(tensor.shape),
                     }
-                    for name, tensor in zip(names, tensors)
+                    for name, tensor in zip(names, tensors, strict=True)
                 ]
 
         io_spec = [

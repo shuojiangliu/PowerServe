@@ -87,6 +87,7 @@ def generate_context_binary():
         "--config_file",
         htp_config_path,
         "--input_output_tensor_mem_type memhandle",
+        '--log_level verbose',
     ]
 
     run(cmd_args)
