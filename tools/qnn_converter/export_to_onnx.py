@@ -16,6 +16,8 @@ from transformers import AutoTokenizer
 
 from soc_config import *
 
+from colors import *
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n-threads", type=int, default=1)
@@ -563,6 +565,7 @@ class OutputEmbeddingExporter:
         onnx_model_folder.mkdir(parents=True, exist_ok=True)
 
         onnx_model_path = onnx_model_folder / f"{self.graph_name}.onnx"
+        print(BRIGHT_MAGENTA + f">>>>>>>>>>>>Inside export_onnx_model[output]: onnx_model_path: {onnx_model_path}<<<<<<<<<<<<" + RESET)
         torch.onnx.export(
             model=self.model_chunk,
             args=self.model_chunk.saved_samples[0].inputs,
@@ -588,7 +591,7 @@ class OutputEmbeddingExporter:
                     for name, tensor in zip(names, tensors)
                 ]
             else:
-                print("Use SA8295 for export_io_spec")
+                print(YELLOW + "Use sa8295 for export_io_spec[output]" + RESET)
                 return [
                     {
                         "name": name,
@@ -605,6 +608,7 @@ class OutputEmbeddingExporter:
             *dump_info_list("out", self.model_chunk.output_names, self.model_chunk.saved_samples[0].outputs),
         ]
 
+        print(BRIGHT_MAGENTA + f">>>>>>>>>>>>Inside export_io_spec[output]: io_spec_path: {self.output_folder}/{self.graph_name}.io.json<<<<<<<<<<<<" + RESET)
         export_json(io_spec, self.output_folder / f"{self.graph_name}.io.json")
 
     def export_quantization_config(self):
@@ -683,7 +687,7 @@ class OutputEmbeddingExporter:
                 for node in graph.node:
                     encode_output(node, 16)
         else:
-            print("Use SA8295, skip encode_activation for output embedding...")
+            print(YELLOW + "Use SA8295, skip encode_activation for output embedding..." + RESET)
 
         # Generate config
         if args.soc != "sa8295":
@@ -720,6 +724,7 @@ class OutputEmbeddingExporter:
                 "is_symmetric": str(encoding.category == "param"),
             }]
 
+        print(BRIGHT_MAGENTA + f">>>>>>>>>>>>Inside export_quantization_config[output]: quantization_config_path: {self.output_folder}/{self.graph_name}.encodings<<<<<<<<<<<<" + RESET)
         export_json(config, self.output_folder / f"{self.graph_name}.encodings")
 
     def export_sample_inputs(self):
@@ -727,6 +732,8 @@ class OutputEmbeddingExporter:
         for i, samples in enumerate(self.model_chunk.saved_samples):
             data_folder = self.output_folder / "data" / str(i)
             data_folder.mkdir(parents=True, exist_ok=True)
+            if i < 6:
+                print(BRIGHT_MAGENTA + f">>>>>>>>>>>>Inside export_sample_inputs[output]: data_folder(to generate .raw files)<for illustration>: {data_folder}<<<<<<<<<<<<" + RESET)
 
             tensor_paths = []
             for name, tensor in zip(self.model_chunk.input_names, samples.inputs, strict=True):
@@ -736,22 +743,29 @@ class OutputEmbeddingExporter:
 
             input_list.append(" ".join(tensor_paths))
 
+        print(BRIGHT_MAGENTA + f">>>>>>>>>>>>Inside export_sample_inputs[output]: generating input_lists.txt under: {self.output_folder}<<<<<<<<<<<<" + RESET)
         with open(self.output_folder / "input_list.txt", "w") as f:
             f.write("\n".join(input_list))
 
     def export_saved_kv(self):
         kv_folder = self.output_folder / "kv"
         kv_folder.mkdir(parents=True, exist_ok=True)
+        print(BRIGHT_MAGENTA + f">>>>>>>>>>>>Inside export_saved_kv[output]: kv_folder(to generate .raw files): {kv_folder}<<<<<<<<<<<<" + RESET)
 
         for name, tensor in zip(self.model_chunk.kv_names, self.model_chunk.saved_kv, strict=True):
             tensor.cpu().numpy().tofile(kv_folder / f"{name}.raw")
 
     def export(self):
+        print(CYAN + "######## export_onnx_model[output]...... ########" + RESET)
         self.export_onnx_model()
+        print(CYAN + "######## export_io_spec[output]...... ########" + RESET)
         self.export_io_spec()
+        print(CYAN + "######## export_quantization_config[output]...... ########" + RESET)
         self.export_quantization_config()
+        print(CYAN + "######## export_sample_inputs[output]...... ########" + RESET)
         self.export_sample_inputs()
         if isinstance(self.model_chunk, KVCache) and self.model_chunk.saved_kv is not None:
+            print(CYAN + "######## export_saved_kv[output]...... ########" + RESET)
             self.export_saved_kv()
 
 
@@ -772,6 +786,7 @@ class ModelChunkExporter:
         onnx_model_folder.mkdir(parents=True, exist_ok=True)
 
         onnx_model_path = onnx_model_folder / f"{self.graph_name}.onnx"
+        print(BRIGHT_MAGENTA + f">>>>>>>>>>>>Inside export_onnx_model: onnx_model_path: {onnx_model_path}<<<<<<<<<<<<" + RESET)
         torch.onnx.export(
             model=self.model_chunk,
             args=self.model_chunk.saved_samples[0].inputs,
@@ -797,7 +812,7 @@ class ModelChunkExporter:
                     for name, tensor in zip(names, tensors)
                 ]
             else:
-                print("Use sa8295 for export_io_spec")
+                print(YELLOW + "Use sa8295 for export_io_spec" + RESET)
                 return [
                     {
                         "name": name,
@@ -814,6 +829,7 @@ class ModelChunkExporter:
             *dump_info_list("out", self.model_chunk.output_names, self.model_chunk.saved_samples[0].outputs),
         ]
 
+        print(BRIGHT_MAGENTA + f">>>>>>>>>>>>Inside export_io_spec: io_spec_path: {self.output_folder}/{self.graph_name}.io.json<<<<<<<<<<<<" + RESET)
         export_json(io_spec, self.output_folder / f"{self.graph_name}.io.json")
 
     def export_quantization_config(self):
@@ -929,7 +945,7 @@ class ModelChunkExporter:
                     if match(node, ".*[qkv]_heads.*"):
                         encode_output(node, 16)
         else:
-            print("Using SA8295, skip encode_activation....")
+            print(YELLOW + "Using SA8295, skip encode_activation...." + RESET)
 
         # Generate config
         if args.soc != "sa8295":
@@ -966,6 +982,7 @@ class ModelChunkExporter:
                 "is_symmetric": str(encoding.category == "param"),
             }]
 
+        print(BRIGHT_MAGENTA + f">>>>>>>>>>>>Inside export_quantization_config: quantization_config_path: {self.output_folder}/{self.graph_name}.encodings<<<<<<<<<<<<" + RESET)
         export_json(config, self.output_folder / f"{self.graph_name}.encodings")
 
     def export_sample_inputs(self):
@@ -973,6 +990,8 @@ class ModelChunkExporter:
         for i, samples in enumerate(self.model_chunk.saved_samples):
             data_folder = self.output_folder / "data" / str(i)
             data_folder.mkdir(parents=True, exist_ok=True)
+            if i < 6:
+                print(BRIGHT_MAGENTA + f">>>>>>>>>>>>Inside export_sample_inputs: data_folder(to generate .raw files)<for illustration>: {data_folder}<<<<<<<<<<<<" + RESET)
 
             tensor_paths = []
             for name, tensor in zip(self.model_chunk.input_names, samples.inputs):
@@ -982,26 +1001,33 @@ class ModelChunkExporter:
 
             input_list.append(" ".join(tensor_paths))
 
+        print(BRIGHT_MAGENTA + f">>>>>>>>>>>>Inside export_sample_inputs: generating input_lists.txt under: {self.output_folder}<<<<<<<<<<<<" + RESET)
         with open(self.output_folder / "input_list.txt", "w") as f:
             f.write("\n".join(input_list))
 
     def export_saved_kv(self):
         kv_folder = self.output_folder / "kv"
         kv_folder.mkdir(parents=True, exist_ok=True)
+        print(BRIGHT_MAGENTA + f">>>>>>>>>>>>Inside export_saved_kv: kv_folder(to generate .raw files): {kv_folder}<<<<<<<<<<<<" + RESET)
 
         for name, tensor in zip(self.model_chunk.kv_names, self.model_chunk.saved_kv):
             tensor.cpu().numpy().tofile(kv_folder / f"{name}.raw")
 
     def export(self):
+        print(CYAN + "######## export_onnx_model...... ########" + RESET)
         self.export_onnx_model()
+        print(CYAN + "######## export_io_spec...... ########" + RESET)
         self.export_io_spec()
+        print(CYAN + "######## export_quantization_config...... ########" + RESET)
         self.export_quantization_config()
+        print(CYAN + "######## export_sample_inputs...... ########" + RESET)
         self.export_sample_inputs()
         if isinstance(self.model_chunk, KVCache) and self.model_chunk.saved_kv is not None:
+            print(CYAN + "######## export_saved_kv...... ########" + RESET)
             self.export_saved_kv()
 
 
-print("Creating model...")
+print(BRIGHT_YELLOW + "INFO: Creating model..." + RESET)
 
 model_params: ModelParams = model_map[args.model_name]()
 graph_params: GraphParams = graph_map[args.graph_name]()
@@ -1034,7 +1060,7 @@ model = LlamaModel(
     model_folder=args.model_folder, model_params=model_params, graph_params=graph_params, model_chunks=model_chunks
 )
 
-print("Loading model weights...")
+print(BRIGHT_YELLOW + "INFO: Loading model weights..." + RESET)
 model.load_weights()
 
 if args.system_prompt_file is not None:
@@ -1124,7 +1150,7 @@ for embedding_info in config_template["embeddings"]:
 export_json(config_template, args.output_folder / f"config_{args.graph_name}.json")
 
 for i, model_chunk in enumerate(model.model_chunks):
-    print(f'Exporting "model_chunk_{i}"...')
+    print(BRIGHT_GREEN + f'******************Exporting "model_chunk_{i}"...*************************' + RESET)
 
     output_folder = args.output_folder / f"model_chunk_{i}" / args.graph_name
     output_folder.mkdir(parents=True, exist_ok=True)
@@ -1140,10 +1166,12 @@ for i, model_chunk in enumerate(model.model_chunks):
         },
         output_folder=output_folder,
     )
+    print(BRIGHT_BLUE + f'[[>>>>>>>>INFO: output_folder for model chunk {i}: {output_folder}<<<<<<<<]]' + RESET)
     exporter.export()
 
-print("Exporting output embedding...")
+print(BRIGHT_GREEN + "********************Exporting output embedding...*************************" + RESET)
 output_folder = args.output_folder / "output_embedding" / args.graph_name
+print(BRIGHT_BLUE + f'[[>>>>>>>>INFO: output_folder for output embedding: {output_folder}<<<<<<<<]]' + RESET)
 output_folder.mkdir(parents=True, exist_ok=True)
 
 exporter = OutputEmbeddingExporter(

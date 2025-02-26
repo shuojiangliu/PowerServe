@@ -6,6 +6,8 @@ from pathlib import Path
 
 from soc_config import soc_map
 
+from colors import *
+
 
 def run_shell_command(command):
     print(f">{' '.join(command.split())}")
@@ -72,7 +74,9 @@ def main(args):
             --soc {args.soc}"""
         if args.fp16_lm_head and args.soc != "sa8295":
             onnx_command += " --fp16-lm-head"
+        print(GREEN + '==================================INFO-STEP-1: converting HuggingFace models to onnx...===========================================' + RESET)
         run_shell_command(onnx_command)
+        print(GREEN + '==================================INFO-STEP-1: converting HuggingFace models to onnx done!========================================' + RESET)
 
         generate_so_command = f"""
         python build_all_layers.py \
@@ -83,7 +87,9 @@ def main(args):
             --graph-names batch_{i} \
             --soc {args.soc}
         """
+        print(GREEN + '==================================INFO-STEP-2: generating models libs from onnx...================================================' + RESET)
         run_shell_command(generate_so_command)
+        print(GREEN + '==================================INFO-STEP-2: generating models libs from onnx done!=============================================' + RESET)
 
         # rm_command = f"rm -rf {args.build_folder}/m*/batch_{i}/data&&rm -rf {args.build_folder}/m*/batch_{i}/onnx_model"
         # run_shell_command(rm_command)
@@ -97,7 +103,9 @@ def main(args):
             --n-model-chunks {args.n_model_chunks} \
             --soc {args.soc}
         """
+    print(GREEN + '==================================INFO-STEP-3: generating QNN context binary...====================================================' + RESET)
     run_shell_command(generate_binary_command)
+    print(GREEN + '==================================INFO-STEP-3: generating QNN context binary done!=================================================' + RESET)
 
     get_output_folder(args.output_folder, args.batch_sizes[0], soc_map[args.soc].htp_version)
 

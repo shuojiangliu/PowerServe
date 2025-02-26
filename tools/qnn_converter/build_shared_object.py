@@ -6,6 +6,8 @@ from pathlib import Path
 
 from soc_config import soc_map
 
+from colors import *
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=Path, required=True)
@@ -48,6 +50,7 @@ def run(cmd_args: list):
 
 
 def convert_model():
+    print(CYAN + "######## Inside build_shared_object.py: calling convert_model with qnn-onnx-converter...... ########" + RESET)
     converter_path = qnn_sdk_folder / "bin" / "x86_64-linux-clang" / "qnn-onnx-converter"
     assert converter_path.exists()
     
@@ -116,10 +119,12 @@ def convert_model():
         if info["preserve_dtype"]:
             cmd_args += ["--preserve_io datatype", "'" + name + "'"]
 
+    print(BRIGHT_BLUE + f"cmd_args for qnn-onnx-converter: {cmd_args}" + RESET)
     run(cmd_args)
 
 
 def generate_library():
+    print(CYAN + "######## Inside build_shared_object.py: calling generate_library with qnn-model-lib-generator...... ########" + RESET)
     lib_generator_path = qnn_sdk_folder / "bin" / "x86_64-linux-clang" / "qnn-model-lib-generator"
     assert lib_generator_path.exists()
 
@@ -137,6 +142,7 @@ def generate_library():
         '--debug',
     ]
 
+    print(BRIGHT_BLUE + f"cmd_args for qnn-model-lib-generator: {cmd_args}" + RESET)
     run(cmd_args)
 
 

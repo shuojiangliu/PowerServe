@@ -6,6 +6,8 @@ from pathlib import Path
 
 from soc_config import soc_map
 
+from colors import *
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--build-folder", type=Path, required=True)
@@ -44,6 +46,7 @@ def run(cmd_args: list):
 
 
 def generate_context_binary():
+    print(CYAN + "######## Inside generate_library.py: calling generate_context_binary with qnn-context-binary-generator...... ########" + RESET)
     bin_generator_path = qnn_sdk_folder / "bin" / "x86_64-linux-clang" / "qnn-context-binary-generator"
     assert bin_generator_path.exists()
 
@@ -89,6 +92,8 @@ def generate_context_binary():
         "--input_output_tensor_mem_type memhandle",
         '--log_level verbose',
     ]
+    
+    print(BRIGHT_BLUE + f"cmd_args for qnn-context-binary-generator: {cmd_args}" + RESET)
 
     run(cmd_args)
 

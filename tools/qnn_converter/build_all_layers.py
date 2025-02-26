@@ -5,6 +5,8 @@ from pathlib import Path
 
 from soc_config import soc_map
 
+from colors import *
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--build-folder", type=Path, required=True)
@@ -85,7 +87,10 @@ multiprocessing.Process()
 pool = multiprocessing.Pool(args.n_model_chunks if args.n_model_chunks < 16 else 16)
 chunk_ids = list(range(args.n_model_chunks))
 chunk_ids.insert(0, -1)
+print(BRIGHT_CYAN + f"chunk_ids: {chunk_ids}" + RESET)
 if args.batch_size == -1:
+    print(GREEN + '=====================INFO inside build_all_layers.py: now we will call build_binary...===================================' + RESET)
     pool.map(build_binary, chunk_ids)
 else:
+    print(GREEN + '=====================INFO inside build_all_layers.py: now we will call build_shared_object...===================================' + RESET)
     pool.map(build_shared_object, chunk_ids)
