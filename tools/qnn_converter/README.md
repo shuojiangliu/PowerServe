@@ -36,6 +36,57 @@
     ```
     After the conversion is completed, copy the resulting output folder to the correct location  for the QNN model on the phone to run
 
+Smallthinker command:
+
+```sh
+python converter.py \
+    --model-folder /home/sliu/Projects/New-Attempt/PowerServe/models_hf/smallthinker_3b \
+    --model-name smallthinker_3b \
+    --system-prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/system_prompts/qwen2.txt \
+    --prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/calibration_data/service_lab_intro_qwen2.txt \
+    --batch-sizes 1 \
+    --max-n-tokens 200 \
+    --artifact-name smallthinker_3b \
+    --n-model-chunk 4 \
+    --output-folder ./smallthinker_3b_output  \
+    --build-folder ./smallthinker_3b_build \
+    --soc sa8295
+```
+
+Llama3.2-1B command:
+
+```sh
+python converter.py \
+    --model-folder /home/sliu/Projects/New-Attempt/PowerServe/models_hf/llama3_2_1b \
+    --model-name llama3_2_1b \
+    --system-prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/system_prompts/llama3.txt \
+    --prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/calibration_data/service_lab_intro_llama3.txt \
+    --batch-sizes 1 \
+    --max-n-tokens 200 \
+    --artifact-name llama3_2_1b \
+    --n-model-chunk 4 \
+    --output-folder ./llama3_2_1b_output  \
+    --build-folder ./llama3_2_1b_build \
+    --soc sa8295
+```
+
+Llama3.2-3B command:
+
+```sh
+python converter.py \
+    --model-folder /home/sliu/Projects/New-Attempt/PowerServe/models_hf/llama3_2_3b \
+    --model-name llama3_2_3b \
+    --system-prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/system_prompts/llama3.txt \
+    --prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/calibration_data/service_lab_intro_llama3.txt \
+    --batch-sizes 1 \
+    --max-n-tokens 200 \
+    --artifact-name llama3_2_3b \
+    --n-model-chunk 4 \
+    --output-folder ./llama3_2_3b_output  \
+    --build-folder ./llama3_2_3b_build \
+    --soc sa8295
+```
+
 # Model Statistics
 
 You need to profile first, and save statistics as JSON files into a folder named `stat`, under the model folder.

@@ -243,7 +243,7 @@ cmake --build build
 ```shell
 # Under the root directory of PowerServe
 cmake -B build                                                      \
-    -DCMAKE_BUILD_TYPE=Release                                      \
+    -DCMAKE_BUILD_TYPE=Debug                                      \
     -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
     -DANDROID_ABI=arm64-v8a                                         \
     -DANDROID_PLATFORM=android-33                                   \
