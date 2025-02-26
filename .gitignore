@@ -33,4 +33,5 @@ models3
 models_qwen
 models_hf
 cmake-build-debug
+.idea
 
