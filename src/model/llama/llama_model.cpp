@@ -52,9 +52,11 @@ LlamaModel::~LlamaModel() {
 auto LlamaModel::forward(
     const std::vector<int> &tokens, const std::vector<int> &pos, const CausalAttentionMask &mask, bool lm_head
 ) -> LogitsVector {
+    POWERSERVE_LOG_INFO("\n\033[92m====================================================================Enter LlamaModel::forward...======================================================================================\033[0m");
     Graph g(m_config->model_id);
     // input embedding
     size_t batch_size  = tokens.size();
+    POWERSERVE_LOG_DEBUG("\033[31m batch_size == {}\033[0m", tokens.size());
     auto embd_tb       = g.add_tensor(m_weights->token_embedding_table);
     auto x             = g.get_embedding(embd_tb, tokens);
     TensorNode *logits = nullptr;
@@ -63,14 +65,18 @@ auto LlamaModel::forward(
 
 #if defined(POWERSERVE_WITH_QNN)
     if (m_platform->qnn_backend) {
+        POWERSERVE_LOG_INFO("\033[35m [[[[[[[[Using qnn_backend]]]]]]]]\033[0m");
         auto size            = llm_config.dim;
         bool use_qnn_lm_head = m_platform->qnn_backend->m_models[m_config->model_id]->m_config.lm_heads.size() > 0;
         if (use_qnn_lm_head) {
+            POWERSERVE_LOG_INFO("\033[33m [[[[[[[[Using use_qnn_lm_head]]]]]]]]\033[0m");
             size   = llm_config.vocab_size;
             logits = g.qnn_forward(x, pos, mask, size, lm_head);
         } else {
+            POWERSERVE_LOG_INFO("\033[33m [[[[[[[[Not using use_qnn_lm_head]]]]]]]]\033[0m");
             x = g.qnn_forward(x, pos, mask, size, lm_head);
             if (lm_head) {
+                POWERSERVE_LOG_INFO("\033[33m   [[[[[[[[Not using use_qnn_lm_head: lm_head==True]]]]]]]]\033[0m");
                 auto rms_final_w    = g.add_tensor(m_weights->rms_final_weight);
                 auto final_rms_norm = g.rms_norm(x, rms_final_w, llm_config.norm_eps);
                 auto output_w       = g.add_tensor(m_weights->output_weight);
@@ -80,6 +86,7 @@ auto LlamaModel::forward(
     } else
 #endif
     {
+        POWERSERVE_LOG_INFO("\033[35m [[[[[[[[Using ggml_backend]]]]]]]]\033[0m");
         if (!lazy_load) {
             m_platform->ggml_backends[m_config->model_id]->reset_kv_batch_size(batch_size);
             for (size_t L = 0; L < llm_config.n_layers; L++) {
@@ -110,8 +117,12 @@ auto LlamaModel::forward(
     }
 
     if (!lm_head) {
+        POWERSERVE_LOG_INFO("\033[92m==============================================================Early Exit LlamaModel::forward...======================================================================================\033[0m");
         return LogitsVector();
     }
+
+    POWERSERVE_LOG_INFO("\033[92m====================================================================Exit LlamaModel::forward...======================================================================================\033[0m");
+
 
     return LogitsVector(logits->m_data, m_config->llm.vocab_size, batch_size);
 }

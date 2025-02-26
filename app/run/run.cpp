@@ -51,8 +51,12 @@ int main(int argc, char *argv[]) {
 #if defined(POWERSERVE_WITH_QNN)
     if (!args.no_qnn) {
         auto &qnn_backend = main_model->m_platform->qnn_backend;
+        POWERSERVE_LOG_INFO("\033[33m >>>>Start Initializing QNN backend...\033[0m");
         main_model->m_platform->init_qnn_backend(args.qnn_lib_folder);
+        POWERSERVE_LOG_INFO("\033[33m >>>>Finish Initializing QNN backend...\033[0m");
+        POWERSERVE_LOG_INFO("\033[33m >>>>Start loading QNN model...\033[0m");
         qnn_backend->load_model(config.main_model_dir / powerserve::qnn::QNN_WORKSPACE_DIR_NAME, main_model->m_config);
+        POWERSERVE_LOG_INFO("\033[33m >>>>Finish loading QNN model...\033[0m");
         main_model->kv_cache = platform->qnn_backend->m_models[main_model->m_config->model_id]->kv_cache.get();
 
         if (args.use_spec) {
@@ -107,10 +111,14 @@ int main(int argc, char *argv[]) {
     } else
 #endif
     {
+        POWERSERVE_LOG_INFO("\n\033[91m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++Start Prefill...+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\033[0m");
         iter = main_model->generate(tokenizer, sampler, args.prompt, args.num_predict, batch_size);
+        POWERSERVE_LOG_INFO("\033[91m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++End Prefill...+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\033[0m");
     }
     prefill_end = powerserve::timestamp_ms();
 
+    POWERSERVE_LOG_INFO("\033[91m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++Start Generation...+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\033[0m");
+    std::vector<powerserve::Token> token_printings;
     while (!iter->end()) {
         auto next = iter->next();
         if (!start) {
@@ -125,8 +133,18 @@ int main(int argc, char *argv[]) {
             fmt::print("[end of text]");
             break;
         }
-        fmt::print("{}", tokenizer.to_string(next, false));
+        // fmt::print("{}", tokenizer.to_string(next, false));
+        fmt::println("\033[32m\n||||||^^^^^^^^^^^^^^^^^^^^^^^^TEXT: {} (#{})^^^^^^^^^^^^^^^^^^^^^^^^||||||\033[0m", tokenizer.to_string(next, false), next);
         fflush(stdout);
+
+        token_printings.emplace_back(next);
+    }
+    fmt::println("");
+    POWERSERVE_LOG_INFO("\033[91m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++End Generation...+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\033[0m");
+
+    fmt::println("\033[32mFinal Output: \033[0m");
+    for (auto& tk : token_printings) {
+        fmt::print("\033[32m{}\033[0m", tokenizer.to_string(tk, false));
     }
     fmt::println("");
 

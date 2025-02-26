@@ -185,10 +185,10 @@ void Library::print_info() {
             status = "No";
         }
 
-        POWERSERVE_LOG_INFO("- {}: {}", name, status);
+        POWERSERVE_LOG_INFO("\033[32m   - {}: {}\033[0m", name, status);
     };
 
-    POWERSERVE_LOG_INFO("QNN backend properties:");
+    POWERSERVE_LOG_INFO("\033[32m QNN backend properties:\033[0m");
     print_property("Create context from binary list", QNN_PROPERTY_CONTEXT_SUPPORT_CREATE_FROM_BINARY_LIST_ASYNC);
     print_property("Dynamic batch", QNN_PROPERTY_GRAPH_SUPPORT_BATCH_MULTIPLE);
     print_property("Early termination", QNN_PROPERTY_GRAPH_SUPPORT_EARLY_TERMINATION);
@@ -220,11 +220,13 @@ void Library::destroy_logger() {
 Library lib;
 
 Backend::Backend() {
+    POWERSERVE_LOG_INFO("\033[31m        >>>> Enter Backend::Backend...\033[0m");
     auto ret = lib.m_qnn_backend.backendCreate(lib.m_logger, nullptr, &m_handle);
     POWERSERVE_ASSERT_QNN_ENV(ret == QNN_SUCCESS, "failed to create QNN backend");
 
     ret = lib.m_qnn_backend.deviceCreate(lib.m_logger, nullptr, &m_device);
     POWERSERVE_ASSERT_QNN_ENV(ret == QNN_SUCCESS, "failed to create QNN device");
+    POWERSERVE_LOG_INFO("\033[31m        >>>> Exit Backend::Backend...\033[0m");
 }
 
 Backend::~Backend() {
@@ -247,14 +249,14 @@ void Backend::print_info() {
 
     auto &platform_info = platform_info_ptr->v1;
 
-    POWERSERVE_LOG_INFO("Hardware device information:");
+    POWERSERVE_LOG_INFO("\033[92m Hardware device information:\033[0m");
     for (size_t i = 0; i < platform_info.numHwDevices; i++) {
         auto &hw_info_struct = platform_info.hwDevices[i];
         POWERSERVE_ASSERT_QNN_ENV(hw_info_struct.version == QNN_DEVICE_HARDWARE_DEVICE_INFO_VERSION_1);
 
         auto &hw_info = hw_info_struct.v1;
         POWERSERVE_LOG_INFO(
-            "[{}] id={}, type={}, num_cores={}, ext_type={}",
+            "\033[92m [{}] id={}, type={}, num_cores={}, ext_type={}\033[0m",
             i,
             hw_info.deviceId,
             hw_info.deviceType,
@@ -267,13 +269,13 @@ void Backend::print_info() {
             POWERSERVE_ASSERT_QNN_ENV(core_info_struct.version == QNN_DEVICE_CORE_INFO_VERSION_1);
 
             auto &core_info = core_info_struct.v1;
-            POWERSERVE_LOG_INFO("[{}] core[{}]: id={}, type={}", i, j, core_info.coreId, core_info.coreType);
+            POWERSERVE_LOG_INFO("\033[92m   [{}] core[{}]: id={}, type={}\033[0m", i, j, core_info.coreId, core_info.coreType);
         }
 
         if (hw_info.deviceInfoExtension->devType == QNN_HTP_DEVICE_TYPE_ON_CHIP) {
             auto &on_chip_info = hw_info.deviceInfoExtension->onChipDevice;
             POWERSERVE_LOG_INFO(
-                "[{}] on_chip: soc={}, arch={}, dlbc={}, signed_pd={}, vtcm_size={}",
+                "\033[92m  [{}] on_chip: soc={}, arch={}, dlbc={}, signed_pd={}, vtcm_size={}\033[0m",
                 i,
                 on_chip_info.socModel,
                 (int)on_chip_info.arch,
@@ -289,6 +291,7 @@ void Backend::print_info() {
 }
 
 HTPDevice::HTPDevice(uint32_t device_id, uint32_t core_id) : m_device_id(device_id), m_core_id(core_id) {
+    POWERSERVE_LOG_INFO("\033[31m        >>>> Enter HTPDevice::HTPDevice...\033[0m");
     auto ret = lib.m_qnn_backend.deviceGetInfrastructure(&m_infra);
     POWERSERVE_ASSERT_QNN_ENV(ret == QNN_SUCCESS, "failed to get HTP device infrastructure");
 
@@ -296,6 +299,7 @@ HTPDevice::HTPDevice(uint32_t device_id, uint32_t core_id) : m_device_id(device_
     m_perf_infra = m_htp_infra->perfInfra;
     ret          = m_perf_infra.createPowerConfigId(device_id, core_id, &m_power_config_id);
     POWERSERVE_ASSERT_QNN_ENV(ret == QNN_SUCCESS, "failed to get power config id of HTP");
+    POWERSERVE_LOG_INFO("\033[31m        >>>> Exit HTPDevice::HTPDevice...\033[0m");
 }
 
 HTPDevice::~HTPDevice() {
@@ -409,6 +413,8 @@ Context::Context(Backend &backend, const Path &binary_file_path, ContextGroup *g
         binary_file_path
     );
 
+    POWERSERVE_LOG_INFO("\033[92m Within Context::Context: binary_file_path is {}\033[0m", binary_file_path);
+
     /*
      * mmap binary
      */
@@ -493,11 +499,11 @@ void Context::print_info() {
         POWERSERVE_ASSERT_QNN_ENV(hw_blob_info_ptr->version == QNN_SYSTEM_CONTEXT_HTP_HW_INFO_BLOB_VERSION_V1);
         auto &hw_blob_info = hw_blob_info_ptr->contextBinaryHwInfoBlobV1_t;
 
-        POWERSERVE_LOG_INFO("Context core API version: {}", format_qnn_version(info.coreApiVersion));
-        POWERSERVE_LOG_INFO("Context backend API version: {}", format_qnn_version(info.backendApiVersion));
-        POWERSERVE_LOG_INFO("Context blob version: {}", format_qnn_version(info.contextBlobVersion));
-        POWERSERVE_LOG_INFO("Number of graphs: {}", info.numGraphs);
-        POWERSERVE_LOG_INFO("Spill-fill buffer size: {:.3f} MiB", hw_blob_info.spillFillBufferSize / 1024.0 / 1024);
+        POWERSERVE_LOG_INFO("\033[96m Context core API version: {}\033[0m", format_qnn_version(info.coreApiVersion));
+        POWERSERVE_LOG_INFO("\033[96m Context backend API version: {}\033[0m", format_qnn_version(info.backendApiVersion));
+        POWERSERVE_LOG_INFO("\033[96m Context blob version: {}\033[0m", format_qnn_version(info.contextBlobVersion));
+        POWERSERVE_LOG_INFO("\033[96m Number of graphs: {}\033[0m", info.numGraphs);
+        POWERSERVE_LOG_INFO("\033[96m Spill-fill buffer size: {:.3f} MiB\033[0m", hw_blob_info.spillFillBufferSize / 1024.0 / 1024);
 
     } break;
     case QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_2: {
@@ -507,11 +513,11 @@ void Context::print_info() {
         POWERSERVE_ASSERT_QNN_ENV(hw_blob_info_ptr->version == QNN_SYSTEM_CONTEXT_HTP_HW_INFO_BLOB_VERSION_V1);
         auto &hw_blob_info = hw_blob_info_ptr->contextBinaryHwInfoBlobV1_t;
 
-        POWERSERVE_LOG_INFO("Context core API version: {}", format_qnn_version(info.coreApiVersion));
-        POWERSERVE_LOG_INFO("Context backend API version: {}", format_qnn_version(info.backendApiVersion));
-        POWERSERVE_LOG_INFO("Context blob version: {}", format_qnn_version(info.contextBlobVersion));
-        POWERSERVE_LOG_INFO("Number of graphs: {}", info.numGraphs);
-        POWERSERVE_LOG_INFO("Spill-fill buffer size: {:.3f} MiB", hw_blob_info.spillFillBufferSize / 1024.0 / 1024);
+        POWERSERVE_LOG_INFO("\033[96m Context core API version: {}\033[0m", format_qnn_version(info.coreApiVersion));
+        POWERSERVE_LOG_INFO("\033[96m Context backend API version: {}\033[0m", format_qnn_version(info.backendApiVersion));
+        POWERSERVE_LOG_INFO("\033[96m Context blob version: {}\033[0m", format_qnn_version(info.contextBlobVersion));
+        POWERSERVE_LOG_INFO("\033[96m Number of graphs: {}\033[0m", info.numGraphs);
+        POWERSERVE_LOG_INFO("\033[96m Spill-fill buffer size: {:.3f} MiB\033[0m", hw_blob_info.spillFillBufferSize / 1024.0 / 1024);
     } break;
 #if (QNN_API_VERSION_MINOR >= 21)
     case QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_3: {
@@ -900,6 +906,7 @@ void Graph::execute() {
 }
 
 Session::Session(const Path &libs_folder) {
+    POWERSERVE_LOG_INFO("\033[31m    >>>> Enter Session::Session...\033[0m");
     m_count = 0;
     uv_os_setenv("ADSP_LIBRARY_PATH", libs_folder.c_str());
     lib.initialize(libs_folder / "libQnnHtp.so", libs_folder / "libQnnSystem.so");
@@ -913,6 +920,7 @@ Session::Session(const Path &libs_folder) {
     m_htp_device->enter_performance_mode();
 
     m_group = std::make_unique<ContextGroup>(10 * 1024 * 1024);
+    POWERSERVE_LOG_INFO("\033[31m    >>>> Exit Session::Session...\033[0m");
 }
 
 ContextBinary::ContextBinary(Backend &backend, const Path &path) {

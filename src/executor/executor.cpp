@@ -49,12 +49,14 @@ void Executor::plan() {
 }
 
 void Executor::run() {
+    POWERSERVE_LOG_INFO("\033[32m  $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$Enter Executor::run()...$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\033[0m");
     auto &model_id = m_graph.m_model_id;
     plan();
 
     for (auto op : m_graph.ops) {
         switch (op->op) {
         case OpType::GET_EMBEDDING: {
+            POWERSERVE_LOG_DEBUG("\033[36m ((((((((((((calling CPU OpType::GET_EMBEDDING)))))))))))) \033[0m");
             auto weight   = op->prev[0]->tensor();
             auto out      = op->output();
             auto [tokens] = op->get_params<GetEmbeddingParams>();
@@ -69,6 +71,7 @@ void Executor::run() {
         } break;
 
         case OpType::MAT_MUL: {
+            POWERSERVE_LOG_DEBUG("\033[36m ((((((((((((calling CPU OpType::MAT_MUL)))))))))))) \033[0m");
             auto a   = op->prev[0]->tensor();
             auto b   = op->prev[1]->tensor();
             auto out = op->output();
@@ -76,6 +79,7 @@ void Executor::run() {
         } break;
 
         case OpType::RMS_NORM: {
+            POWERSERVE_LOG_DEBUG("\033[36m ((((((((((((calling CPU OpType::RMS_NORM)))))))))))) \033[0m");
             auto x      = op->prev[0]->tensor();
             auto weight = op->prev[1]->tensor();
             auto out    = op->output();
@@ -91,6 +95,7 @@ void Executor::run() {
         } break;
 
         case OpType::ROPE: {
+            POWERSERVE_LOG_DEBUG("\033[36m ((((((((((((calling CPU OpType::ROPE)))))))))))) \033[0m");
             auto src             = op->prev[0]->tensor();
             auto out             = op->next[0]->tensor();
             auto [pos, rope_cfg] = op->get_params<RopeParams>();
@@ -111,11 +116,13 @@ void Executor::run() {
 
 #if defined(POWERSERVE_WITH_QNN)
         case OpType::QNN_FORWARD: {
+            POWERSERVE_LOG_DEBUG("\033[36m #########((((((((((((<<<<<<<<<<<<<<<calling QNN OpType::QNN_FORWARD start>>>>>>>>>>>>>>>))))))))))))######### \033[0m");
             auto x     = op->prev[0]->tensor();
             auto out   = op->output();
             auto pos   = op->get_params<QNNForwardParams>().pos;
             auto &mask = op->get_params<QNNForwardParams>().mask;
             m_platform.qnn_backend->forward(m_graph.m_model_id, out, x, pos, mask);
+            POWERSERVE_LOG_DEBUG("\033[36m #########((((((((((((<<<<<<<<<<<<<<<calling QNN OpType::QNN_FORWARD end>>>>>>>>>>>>>>>))))))))))))########## \033[0m");
         } break;
         case OpType::QNN_FORWARD_VL: {
             auto x                  = op->prev[0]->tensor();
@@ -198,5 +205,7 @@ void Executor::run() {
             POWERSERVE_ABORT("Unknown OpType: {}", static_cast<int>(op->op));
         }
     }
+
+    POWERSERVE_LOG_INFO("\033[32m$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$Exit Executor::run()...$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\033[0m");
 }
 } // namespace powerserve

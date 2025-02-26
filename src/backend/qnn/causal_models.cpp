@@ -34,6 +34,8 @@ CausalLM::CausalLM(const Path &model_folder, const std::shared_ptr<ModelConfig> 
     m_config(model_folder / m_config_file_name, model_config),
     m_model_config(model_config),
     m_session(environment) {
+    POWERSERVE_LOG_INFO("\033[31m    >>>> =============================================================Enter CausalLM::CausalLM...=============================================================================\033[0m");
+
     m_gparams.cache_size   = m_config.chunks[0].cache_size;
     m_gparams.kv_size      = m_config.chunks[0].kv_size;
     m_gparams.context_size = m_config.chunks[0].context_size;
@@ -43,6 +45,10 @@ CausalLM::CausalLM(const Path &model_folder, const std::shared_ptr<ModelConfig> 
         POWERSERVE_ASSERT(info.context_size == m_gparams.context_size);
         m_gparams.max_batch_size = std::max(m_gparams.max_batch_size, info.batch_size);
     }
+
+    POWERSERVE_LOG_INFO("\033[31m m_gparams.cache_size: {}; m_gparams.kv_size: {}; m_gparams.context_size: {}; m_gparams.max_batch_size: {}. \033[0m",
+        m_gparams.cache_size, m_gparams.kv_size, m_gparams.context_size, m_gparams.max_batch_size);
+
     load_model_chunks();
     if (!m_config.lm_heads.empty()) {
         for (auto &config : m_config.lm_heads) {
@@ -67,11 +73,15 @@ CausalLM::CausalLM(const Path &model_folder, const std::shared_ptr<ModelConfig> 
     }
 
     compute_rope_embeds();
+
+    POWERSERVE_LOG_INFO("\033[31m    >>>> =============================================================Exit CausalLM::CausalLM...=============================================================================\033[0m");
 }
 
 auto CausalLM::load_context_binary(const Path &path) -> ContextBinary & {
+    POWERSERVE_LOG_INFO("\033[92m       >>>>>********************************* Enter CausalLM::load_context_binary...*******************************************\033[0m");
     auto iter = m_context_binaries.find(path);
     if (iter != m_context_binaries.end()) {
+        POWERSERVE_LOG_INFO("\033[92m       >>>>>***************************** Early Exit CausalLM::load_context_binary...**************************************\033[0m");
         return iter->second;
     }
 
@@ -83,12 +93,17 @@ auto CausalLM::load_context_binary(const Path &path) -> ContextBinary & {
         context_binary.m_context->print_info();
     }
 
+    POWERSERVE_LOG_INFO("\033[92m Currently we have m_context_binaries.size(): {}\033[0m", m_context_binaries.size());
+    POWERSERVE_LOG_INFO("\033[92m       >>>>>********************************* Exit CausalLM::load_context_binary...*******************************************\033[0m");
+
     return context_binary;
 }
 
 void CausalLM::load_model_chunks() {
+    POWERSERVE_LOG_INFO("\033[93m      >>>> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Enter CausalLM::load_model_chunks()...~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\033[0m");
     std::vector<ChunkConfig *> chunk_configs;
     chunk_configs.reserve(m_config.chunks.size());
+    POWERSERVE_LOG_INFO("\033[96m m_config.chunks.size(): {} \033[0m", m_config.chunks.size());
     for (auto &config : m_config.chunks) {
         chunk_configs.push_back(&config);
     }
@@ -97,6 +112,17 @@ void CausalLM::load_model_chunks() {
         return a->batch_size == b->batch_size ? a->start_layer_id < b->start_layer_id : a->batch_size > b->batch_size;
     };
     std::sort(chunk_configs.begin(), chunk_configs.end(), cmp);
+
+    for (auto& config : chunk_configs) {
+        POWERSERVE_LOG_DEBUG("\033[96m config->start_layer_id: {}; config->end_layer_id: {}; config->cache_size: {}; config->context_size: {};\n          config->kv_path_format: {}; config->head_dim: {} config->kv_size: {} \033[0m",
+            config->start_layer_id, config->end_layer_id,
+            config->cache_size, config->context_size,
+            config->kv_path_format, config->head_dim, config->kv_size);
+        POWERSERVE_LOG_DEBUG("\033[96m config->type: {}; config->graph_name: {}; config->batch_size: {};\n          config->model_path: {}; config->x_name: {}; config->out_name: {}\033[0m",
+            config->type, config->graph_name, config->batch_size,
+            config->model_path, config->x_name, config->out_name);
+        fmt::println("");
+    }
 
     // commented out for 8295
     // std::unique_ptr<SharedBufferAllocator> dummy_alloc;
@@ -130,6 +156,7 @@ void CausalLM::load_model_chunks() {
     // dummy_buffer.reset(nullptr);
     // dummy_alloc.reset(nullptr);
 
+    POWERSERVE_LOG_INFO("\033[31m max_chunks.size(): {} \033[0m", max_chunks.size());
     for (size_t i = 0; i < max_chunks.size(); i++) {
         auto &max_chunk = *max_chunks[i];
 
@@ -160,6 +187,7 @@ void CausalLM::load_model_chunks() {
     }
 
     kv_cache->advance_tokens(m_gparams.kv_size);
+    POWERSERVE_LOG_INFO("\033[93m      >>>> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Exit CausalLM::load_model_chunks()...~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\033[0m");
 }
 
 void CausalLM::compute_rope_embeds() {
@@ -205,6 +233,7 @@ void CausalLM::fill_rope_embeds(std::span<const size_t> pos) {
                 src.sin_values.data(),
                 sizeof(src.sin_values[0]) * src.sin_values.size()
             );
+            );
         }
     }
 }
@@ -236,7 +265,9 @@ void CausalLM::reset_kv_cache() {
 
 void CausalLM::Batch::forward() {
     size_t batch_size = pos.size();
+    POWERSERVE_LOG_INFO("\033[96m !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Enter Batch::forward()...!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! \033[0m");
 
+    POWERSERVE_LOG_DEBUG("\033[96m >>>> batch_size: {} \033[96m", batch_size);
     for (size_t i = 0; i < batch_size; i++) {
         auto buffer = (float *)chunks[0]->input_buffer() + i * parent.m_model_config->llm.dim;
         memcpy(
@@ -249,6 +280,7 @@ void CausalLM::Batch::forward() {
     parent.fill_rope_embeds(pos);
     parent.fill_attention_mask(mask);
 
+    POWERSERVE_LOG_DEBUG("\033[96m >>>> chunks.size(): {} \033[96m", chunks.size());
     for (size_t i = 0; i < chunks.size(); i++) {
 #if defined(QNN_TIMER)
         chunks[i]->execute(parent.m_excute_time_ns);
@@ -263,6 +295,8 @@ void CausalLM::Batch::forward() {
             );
         }
     }
+
+    POWERSERVE_LOG_INFO("\033[96m !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Exit Batch::forward()...!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! \033[0m\n");
 }
 
 void CausalLM::Batch::compute_logits() {

@@ -60,10 +60,13 @@ void QNNBackend::forward(
     if (dst->n_elements() > 1) {
         dst_data_ptr = (float *)dst->get<CPUBuffer>().m_data;
     }
+    POWERSERVE_LOG_DEBUG("\033[93m main_batches.size(): {}\033[0m", main_batches.size());
+
     for (size_t i = 0; i < main_batches.size(); i++) {
         auto &batch = main_batches[i];
         batch.forward();
         if (dst->n_elements() > 1) {
+            POWERSERVE_LOG_DEBUG("\033[93m dst->n_elements() > 1 is: {}\033[0m", dst->n_elements());
             auto vocab_size   = batch.parent.m_model_config->llm.vocab_size;
             size_t batch_size = batch.pos.size();
             size_t dim        = model->m_model_config->llm.dim;
@@ -86,6 +89,8 @@ void QNNBackend::forward(
             } else {
                 dst_data_ptr += batch_size * dim;
             }
+        } else {
+            POWERSERVE_LOG_DEBUG("\033[93m dst->n_elements() == 1\033[0m");
         }
 
         PerfettoTrace::begin("qnn_save_kv");
