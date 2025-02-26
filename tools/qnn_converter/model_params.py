@@ -79,6 +79,30 @@ class Llama3_2_1B_Params(ModelParams):
     n_fp16_neurons = 0
 
 
+class Llama3_2_3B_Params(ModelParams):
+    has_qkv_bias = False
+    use_drelu = False
+    tie_embedding = True
+
+    n_layers = 28
+    vocab_size = 128256
+    ffn_hidden_dim = 8192
+    head_dim = 128
+    n_heads = 24
+    n_kv_heads = 8
+
+    rope_theta = 5e5
+    rms_norm_eps = 1e-5
+    attention_mask_value = -1e2
+
+    fp16_attention_layers = []
+    fp16_ffn_layers = []
+    fp16_rope = False
+    fp16_qkv_heads = False
+    n_fp16_heads = 0
+    n_fp16_neurons = 0
+
+
 class Llama2_7B_Params(ModelParams):
     has_qkv_bias = False
     use_drelu = False
@@ -166,10 +190,14 @@ class Qwen2_0_5B_Params(ModelParams):
 
     rope_theta = 1e6
     rms_norm_eps = 1e-6
-    attention_mask_value = -5e4
+    # attention_mask_value = -5e4
+    attention_mask_value = -1e2 # change for 8295
 
-    fp16_attention_layers = [0, 1, 2, 10, 23]
-    fp16_ffn_layers = [23]
+    # fp16_attention_layers = [0, 1, 2, 10, 23]
+    # fp16_ffn_layers = [23]
+    # change for 8295
+    fp16_attention_layers = []
+    fp16_ffn_layers = []
     fp16_rope = False
     fp16_qkv_heads = False
     n_fp16_heads = 0
@@ -233,6 +261,7 @@ model_map: dict[str, ModelParams] = {
     "qwen2_0.5b": Qwen2_0_5B_Params,
     "llama3_1_8b": Llama3_1_8B_Params,
     "llama3_2_1b": Llama3_2_1B_Params,
+    "llama3_2_3b": Llama3_2_3B_Params,
     "llama2_7b": Llama2_7B_Params,
     "smallthinker_3b": SmallThinker_3B_Params,
     "smallthinker_500m": SmallThinker_500M_Params,
