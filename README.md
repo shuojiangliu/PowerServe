@@ -1,3 +1,5 @@
+> Notice: This ("Support-SA8295-Debug") is a temporary debug branch for SA8295P. Compared to my Support-SA8295 branch, it just adds a few debug printings, and reenables dummy buffer for execution. (The Support-SA8295 branch created before was the baseline branch that could run llama3.2-1b correctly with mobile QNN 2.25 *before flashing the image*.)
+
 # PowerServe
 PowerServe is a high-speed and easy-use LLM serving framework for local deployment.
 
