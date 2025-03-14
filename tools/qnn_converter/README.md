@@ -36,6 +36,8 @@
     ```
     After the conversion is completed, copy the resulting output folder to the correct location  for the QNN model on the phone to run
 
+These commands below are for local debug&record only (Please ignore them):
+
 Smallthinker command:
 
 ```sh
@@ -70,6 +72,57 @@ python converter.py \
     --soc sa8295
 ```
 
+```shell
+python converter.py \
+    --model-folder /home/sliu/Projects/New-Attempt/PowerServe/models_hf/llama3_2_1b \
+    --model-name llama3_2_1b \
+    --system-prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/system_prompts/llama3.txt \
+    --prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/calibration_data/service_lab_intro_llama3.txt \
+    --batch-sizes 1 \
+    --max-n-tokens 200 \
+    --artifact-name llama3_2_1b \
+    --n-model-chunk 4 \
+    --output-folder /data/workdir/llama3_2_1b_output  \
+    --build-folder /data/workdir/llama3_2_1b_build \
+    --soc sa8295
+```
+
+llama3.2-1b weight sharing command:
+
+```shell
+python converter.py \
+    --model-folder /home/sliu/Projects/New-Attempt/PowerServe/models_hf/llama3_2_1b \
+    --model-name llama3_2_1b \
+    --system-prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/system_prompts/llama3.txt \
+    --prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/calibration_data/service_lab_intro_llama3.txt \
+    --batch-sizes 1 16 \
+    --max-n-tokens 200 \
+    --artifact-name llama3_2_1b \
+    --n-model-chunk 4 \
+    --output-folder /data/workdir/llama3_2_1b_output_shared  \
+    --build-folder /data/workdir/llama3_2_1b_build_shared \
+    --soc sa8295
+```
+
+```shell
+python converter.py \
+    --model-folder /home/sliu/Projects/New-Attempt/PowerServe/models_hf/llama3_2_1b \
+    --model-name llama3_2_1b \
+    --system-prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/system_prompts/llama3.txt \
+    --prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/calibration_data/service_lab_intro_llama3.txt \
+    --batch-sizes 1 \
+    --max-n-tokens 200 \
+    --artifact-name llama3_2_1b \
+    --n-model-chunk 4 \
+    --output-folder /data/workdir/extra-mobile-qnn25/llama3_2_1b_output_bs1_no_share  \
+    --build-folder /data/workdir/extra-mobile-qnn25/llama3_2_1b_build_bs1_no_share \
+    --soc sa8295
+
+python ./tools/gguf_export.py -m /home/sliu/Projects/New-Attempt/PowerServe/models_hf/llama3_2_1b --qnn-path /data/workdir/extra-mobile-qnn25/llama3_2_1b_output_bs1_no_share -o /data/workdir/extra-mobile-qnn25/llama3_2_1b_bs1_no_share
+
+./powerserve create -m /data/workdir/extra-mobile-qnn25/llama3_2_1b_bs1_no_share --exe-path ./build_mobild_qnn/out -o /data/workdir/extra-mobile-qnn25/working_1b_bs1_no_share
+```
+
 Llama3.2-3B command:
 
 ```sh
@@ -81,10 +134,29 @@ python converter.py \
     --batch-sizes 1 \
     --max-n-tokens 200 \
     --artifact-name llama3_2_3b \
-    --n-model-chunk 4 \
-    --output-folder ./llama3_2_3b_output  \
-    --build-folder ./llama3_2_3b_build \
+    --n-model-chunk 7 \
+    --output-folder /data/workdir/llama3_2_3b_output  \
+    --build-folder /data/workdir/llama3_2_3b_build \
     --soc sa8295
+```
+
+```sh
+python converter.py \
+    --model-folder /home/sliu/Projects/New-Attempt/PowerServe/models_hf/llama3_2_3b \
+    --model-name llama3_2_3b \
+    --system-prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/system_prompts/llama3.txt \
+    --prompt-file /home/sliu/Projects/New-Attempt/PowerServe/assets/calibration_data/service_lab_intro_llama3.txt \
+    --batch-sizes 1 \
+    --max-n-tokens 200 \
+    --artifact-name llama3_2_3b \
+    --n-model-chunk 7 \
+    --output-folder /data/workdir/models_convert_3b/llama3_2_3b_output_bs1_no_share  \
+    --build-folder /data/workdir/models_convert_3b/llama3_2_3b_build_bs1_no_share \
+    --soc sa8295
+    
+python ./tools/gguf_export.py -m /home/sliu/Projects/New-Attempt/PowerServe/models_hf/llama3_2_3b --qnn-path /data/workdir/models_convert_3b/llama3_2_3b_output_bs1_no_share -o /data/workdir/models_convert_3b/llama3_2_3b_temp_bs1_no_share
+
+./powerserve create -m /data/workdir/models_convert_3b/llama3_2_3b_temp_bs1_no_share --exe-path ./build/out -o /data/workdir/models_final/working_3b_bs1_no_share
 ```
 
 # Model Statistics
