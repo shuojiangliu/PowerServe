@@ -57,7 +57,12 @@ CausalLM::CausalLM(const Path &model_folder, const std::shared_ptr<ModelConfig> 
         auto max_lm_head_ptr   = m_lm_heads.at(m_gparams.max_batch_size).get();
         auto &max_lm_head      = *max_lm_head_ptr;
         auto &context_binary   = load_context_binary(max_lm_head.m_graph_config.model_path);
+
+
+        POWERSERVE_LOG_DEBUG("\033[31m CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL: LM head enter std::make_unique<SharedBufferAllocator>({})\033[0m", max_lm_head.io_tensor_size());
         context_binary.m_alloc = std::make_unique<SharedBufferAllocator>(max_lm_head.io_tensor_size());
+        POWERSERVE_LOG_DEBUG("\033[31m CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL: LM head survived std::make_unique<SharedBufferAllocator>({})\033[0m", max_lm_head.io_tensor_size());
+
         max_lm_head.setup_buffers();
         POWERSERVE_ASSERT(context_binary.m_alloc->unallocated_size() == 0);
         context_binary.m_context->free_system_context();
@@ -124,22 +129,23 @@ void CausalLM::load_model_chunks() {
         fmt::println("");
     }
 
-    // commented out for 8295
-    // std::unique_ptr<SharedBufferAllocator> dummy_alloc;
-    // std::unique_ptr<SharedBuffer> dummy_buffer;
-    // constexpr size_t dummy_sizes[] = {1024 * 1024 * 512, 1024 * 1024 * 256, 1024 * 1024 * 128};
-    // for (auto dummy_size : dummy_sizes) {
-    //     try {
-    //         dummy_alloc          = std::make_unique<SharedBufferAllocator>(dummy_size);
-    //         auto &context_binary = load_context_binary(chunk_configs[0]->model_path);
-    //         dummy_buffer =
-    //             std::make_unique<SharedBuffer>(*context_binary.m_context, *dummy_alloc, QNN_DATATYPE_INT_8, dummy_size);
-    //         break;
-    //     } catch (const std::runtime_error &e) {
-    //         dummy_alloc.reset(nullptr);
-    //         dummy_buffer.reset(nullptr);
-    //     }
-    // }
+    //commented out for 8295
+    std::unique_ptr<SharedBufferAllocator> dummy_alloc;
+    std::unique_ptr<SharedBuffer> dummy_buffer;
+    constexpr size_t dummy_sizes[] = {1024 * 1024 * 512, 1024 * 1024 * 256, 1024 * 1024 * 128};
+    for (auto dummy_size : dummy_sizes) {
+        try {
+            dummy_alloc          = std::make_unique<SharedBufferAllocator>(dummy_size);
+            auto &context_binary = load_context_binary(chunk_configs[0]->model_path);
+            dummy_buffer =
+                std::make_unique<SharedBuffer>(*context_binary.m_context, *dummy_alloc, QNN_DATATYPE_INT_8, dummy_size);
+            break;
+        } catch (const std::runtime_error &e) {
+            dummy_alloc.reset(nullptr);
+            dummy_buffer.reset(nullptr);
+        }
+    }
+
     for (auto config : chunk_configs) {
         auto &chunks = m_chunks_map[config->batch_size];
         chunks.emplace_back(std::make_unique<ModelChunk>(*this, *config));
@@ -153,16 +159,19 @@ void CausalLM::load_model_chunks() {
     );
 
     // commented out for 8295
-    // dummy_buffer.reset(nullptr);
-    // dummy_alloc.reset(nullptr);
+    dummy_buffer.reset(nullptr);
+    dummy_alloc.reset(nullptr);
 
     POWERSERVE_LOG_INFO("\033[31m max_chunks.size(): {} \033[0m", max_chunks.size());
     for (size_t i = 0; i < max_chunks.size(); i++) {
+        //POWERSERVE_LOG_DEBUG("\033[31m CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-index {}-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL \033[0m", i);
         auto &max_chunk = *max_chunks[i];
 
         auto &context_binary   = load_context_binary(max_chunk.m_config.model_path);
         size_t buf_size        = max_chunk.io_tensor_size();
+        //POWERSERVE_LOG_DEBUG("\033[31m CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL: enter std::make_unique<SharedBufferAllocator>({})\033[0m", buf_size);
         context_binary.m_alloc = std::make_unique<SharedBufferAllocator>(buf_size);
+        //POWERSERVE_LOG_DEBUG("\033[31m CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL-CRITICAL: survived std::make_unique<SharedBufferAllocator>\033[0m");
 
         max_chunk.initialize(*kv_cache);
 
@@ -232,7 +241,6 @@ void CausalLM::fill_rope_embeds(std::span<const size_t> pos) {
                 (float *)chunk.m_buffers.at("rope_embed_sin")->m_data + i * head_dim / 2,
                 src.sin_values.data(),
                 sizeof(src.sin_values[0]) * src.sin_values.size()
-            );
             );
         }
     }
