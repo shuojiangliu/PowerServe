@@ -63,6 +63,11 @@ struct CausalLM {
         ALWAYS_INLINE auto get_key(KVPosition token_pos) const -> KVView {
             auto &chunk  = chunks.get_chunk(token_pos.layer_id);
             auto &buffer = *chunk.m_buffers.at(fmt::format("layer_{}_key_{}", token_pos.layer_id, token_pos.head_id));
+            if (token_pos.index >= chunk.m_config.batch_size) {
+                POWERSERVE_LOG_DEBUG("????? See: layer_{}_key_{}", token_pos.layer_id, token_pos.head_id);
+                POWERSERVE_LOG_DEBUG("????? See: token_pos.index: {}; chunk.m_config.batch_size: {}", token_pos.index, chunk.m_config.batch_size);
+            }
+
             POWERSERVE_ASSERT(token_pos.index < chunk.m_config.batch_size);
 
             return {
@@ -77,6 +82,11 @@ struct CausalLM {
         ALWAYS_INLINE auto get_value(KVPosition token_pos) const -> KVView {
             auto &chunk  = chunks.get_chunk(token_pos.layer_id);
             auto &buffer = *chunk.m_buffers.at(fmt::format("layer_{}_value_{}", token_pos.layer_id, token_pos.head_id));
+            if (token_pos.index >= chunk.m_config.batch_size) {
+                POWERSERVE_LOG_DEBUG("????? See: layer_{}_value_{}", token_pos.layer_id, token_pos.head_id);
+                POWERSERVE_LOG_DEBUG("????? See: token_pos.index: {}; chunk.m_config.batch_size: {}", token_pos.index, chunk.m_config.batch_size);
+            }
+
             POWERSERVE_ASSERT(token_pos.index < chunk.m_config.batch_size);
 
             return {

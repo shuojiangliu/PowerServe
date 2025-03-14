@@ -175,7 +175,9 @@ void ModelChunk::setup_tensors() {
 }
 
 void ModelChunk::initialize(KVCacheInterface &kv_cache) {
+    // POWERSERVE_LOG_INFO("Enter setup_buffers.......");
     setup_buffers();
+    // POWERSERVE_LOG_INFO("Survived setup_buffers.......");
 
     if (!m_sibling) {
         load_kv(kv_cache);
@@ -195,11 +197,17 @@ void ModelChunk::setup_buffers() {
         m_buffers = m_sibling->m_buffers;
     }
 
+    //POWERSERVE_LOG_DEBUG("\033[95m                     ////////////enter setup_buffer x\033[0m");
     setup_buffer(m_buffers["x"], m_tensors["x"]);
+    //POWERSERVE_LOG_DEBUG("\033[95m                     ////////////survived setup_buffer x\033[0m");
     setup_buffer(m_buffers["attn_bias"], m_tensors["attn_bias"]);
+    //POWERSERVE_LOG_DEBUG("\033[95m                     ////////////survived setup_buffer attn_bias\033[0m");
     setup_buffer(m_buffers["rope_embed_cos"], m_tensors["rope_embed_cos"]);
+    //POWERSERVE_LOG_DEBUG("\033[95m                     ////////////survived setup_buffer rope_embd_cos\033[0m");
     setup_buffer(m_buffers["rope_embed_sin"], m_tensors["rope_embed_sin"]);
+    //POWERSERVE_LOG_DEBUG("\033[95m                     ////////////survived setup_buffer rope_embd_sin\033[0m");
     setup_buffer(m_buffers["out"], m_tensors["out"]);
+    //POWERSERVE_LOG_DEBUG("\033[95m                     ////////////survived setup_buffer out\033[0m");
 
     for (size_t i = 0; i < n_layers(); i++) {
         for (size_t j = 0; j < n_kv_heads; j++) {
@@ -207,18 +215,22 @@ void ModelChunk::setup_buffers() {
                 m_buffers[fmt::format("layer_{}_key_t_cache_{}", m_config.start_layer_id + i, j)],
                 m_tensors[fmt::format("layer_{}_key_t_cache_{}", m_config.start_layer_id + i, j)]
             );
+            //POWERSERVE_LOG_DEBUG("\033[95m                     ////////////survived setup_buffer layer_{}_key_t_cache_{}\033[0m",  m_config.start_layer_id + i, j);
             setup_buffer(
                 m_buffers[fmt::format("layer_{}_value_cache_{}", m_config.start_layer_id + i, j)],
                 m_tensors[fmt::format("layer_{}_value_cache_{}", m_config.start_layer_id + i, j)]
             );
+            //POWERSERVE_LOG_DEBUG("\033[95m                     ////////////survived setup_buffer layer_{}_value_cache_{}\033[0m",  m_config.start_layer_id + i, j);
             setup_buffer(
                 m_buffers[fmt::format("layer_{}_key_{}", m_config.start_layer_id + i, j)],
                 m_tensors[fmt::format("layer_{}_key_{}", m_config.start_layer_id + i, j)]
             );
+            //POWERSERVE_LOG_DEBUG("\033[95m                     ////////////survived setup_buffer layer_{}_key_cache_{}\033[0m",  m_config.start_layer_id + i, j);
             setup_buffer(
                 m_buffers[fmt::format("layer_{}_value_{}", m_config.start_layer_id + i, j)],
                 m_tensors[fmt::format("layer_{}_value_{}", m_config.start_layer_id + i, j)]
             );
+            //POWERSERVE_LOG_DEBUG("\033[95m                     ////////////survived setup_buffer layer_{}_value_{}\033[0m",  m_config.start_layer_id + i, j);
         }
     }
 }
