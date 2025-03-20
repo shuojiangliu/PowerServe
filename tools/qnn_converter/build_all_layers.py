@@ -7,6 +7,7 @@ from soc_config import soc_map
 
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--n-threads", type=int, required=True)
 parser.add_argument("--build-folder", type=Path, required=True)
 parser.add_argument("--batch-size", default=-1, type=int)
 parser.add_argument("--n-model-chunks", type=int, required=True)
@@ -80,7 +81,7 @@ def build_binary(chunk_id: int):
 
 
 multiprocessing.Process()
-pool = multiprocessing.Pool(args.n_model_chunks if args.n_model_chunks < 16 else 16)
+pool = multiprocessing.Pool(args.n_model_chunks if args.n_model_chunks < args.n_threads else args.n_threads)
 chunk_ids = list(range(args.n_model_chunks))
 chunk_ids.insert(0, -1)
 if args.batch_size == -1:

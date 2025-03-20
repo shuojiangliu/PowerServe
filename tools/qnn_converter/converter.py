@@ -75,6 +75,7 @@ def main(args):
 
         generate_so_command = f"""
         python build_all_layers.py \
+            --n-threads {args.n_threads} \
             --build-folder {args.build_folder} \
             --batch-size {i} \
             --n-model-chunks {args.n_model_chunks} \
@@ -89,6 +90,7 @@ def main(args):
     get_config_file(args.build_folder, args.batch_sizes)
     generate_binary_command = f"""
         python build_all_layers.py \
+            --n-threads {args.n_threads} \
             --build-folder {args.build_folder} \
             --artifact-name {args.artifact_name} \
             --graph-names {" ".join([f"batch_{i}" for i in args.batch_sizes])} \
@@ -107,7 +109,7 @@ if __name__ == "__main__":
         description="Convert the model in safetensors format to a QNN executable binary format."
     )
 
-    parser.add_argument("--n-threads", type=int, default=24, help="Number of threads to use when exporting to onnx.")
+    parser.add_argument("--n-threads", type=int, default=4, help="Number of threads to use when exporting the model.")
     parser.add_argument("--model-folder", type=str, help="Model folder path.", required=True)
     parser.add_argument("--model-name", type=str, help="Model name.", required=True)
     parser.add_argument(
