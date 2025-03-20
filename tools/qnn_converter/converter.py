@@ -122,7 +122,7 @@ if __name__ == "__main__":
     parser.add_argument("--n-model-chunks", type=int, default=1, help="Number of model chunks.")
     parser.add_argument("--artifact-name", type=str, required=True)
     parser.add_argument("--batch-sizes", type=int, nargs="+", required=True)
-    parser.add_argument("--soc", type=str, choices=soc_map.keys(), default="8gen3")
+    parser.add_argument("--soc", type=str, choices=soc_map.keys(), default="8650")
     parser.add_argument("--fp16-lm-head", action="store_true")
 
     args = parser.parse_args()

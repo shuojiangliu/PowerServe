@@ -134,8 +134,8 @@ void CausalLM::load_model_chunks() {
     // Dummy buffer start
     // SA8295 patch: ban out dummy buffer
 
-    dummy_buffer.reset(nullptr);
-    dummy_alloc.reset(nullptr);
+    // dummy_buffer.reset(nullptr);
+    // dummy_alloc.reset(nullptr);
 
     // Dummy buffer end
 

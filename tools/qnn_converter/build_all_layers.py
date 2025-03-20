@@ -13,7 +13,7 @@ parser.add_argument("--batch-size", default=-1, type=int)
 parser.add_argument("--n-model-chunks", type=int, required=True)
 parser.add_argument("--artifact-name", type=str, required=True)
 parser.add_argument("--graph-names", type=str, nargs="+", required=True)
-parser.add_argument("--soc", choices=soc_map.keys(), default="8gen3")
+parser.add_argument("--soc", choices=soc_map.keys(), default="8650")
 args = parser.parse_args()
 
 

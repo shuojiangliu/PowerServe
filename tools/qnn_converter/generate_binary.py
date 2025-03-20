@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--build-folder", type=Path, required=True)
 parser.add_argument("--artifact-name", type=str, required=True)
 parser.add_argument("--graph-names", type=str, nargs="+", required=True)
-parser.add_argument("--soc", choices=soc_map.keys(), default="8gen3")
+parser.add_argument("--soc", choices=soc_map.keys(), default="8650")
 parser.add_argument("--log-file", type=str, default="build_bin.log")
 
 args = parser.parse_args()
