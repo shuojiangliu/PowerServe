@@ -20,6 +20,29 @@
 
 namespace powerserve {
 
+void tensor_dump(Tensor* x, size_t max_show_dims, size_t max_show_elems, std::string msg) {
+    std::ofstream outFile("tensor_dump.txt", std::ios::app);
+    if (!outFile.is_open()) {
+        return;
+    }
+
+    outFile << "-----------------------------Dumping tensor------------------------------------\n";
+    outFile << "TENSOR Type: " << (size_t)x->m_dtype << "\n";
+    outFile << "Dims: " << x->m_shape[1] << " * " << x->m_shape[0] << "\n";
+    outFile << "Notes: " << msg << "\n";
+    outFile << "Dumping data:\n";
+
+    for (size_t i = 0; i < max_show_dims && i < x->m_shape[1]; i++) {
+        outFile << "Dimension " << i << ":";
+        for (size_t j = 0; j < max_show_elems && j < x->m_shape[0]; j++) {
+            float value = *((float *)x->get<CPUBuffer>().m_data + i * x->m_shape[0] + j);
+            outFile << " " << std::fixed << std::setprecision(6) << value;
+        }
+        outFile << "\n";
+    }
+    outFile << "-----------------------------Tensor dump finished!-----------------------------\n";
+}
+
 void Executor::allocate_buffers() {
     for (auto tensor : m_graph.tensors) {
         if (tensor->m_data) {
@@ -61,6 +84,8 @@ void Executor::run() {
             auto out      = op->output();
             auto [tokens] = op->get_params<GetEmbeddingParams>();
             m_platform.ggml_backends[model_id]->get_embedding(out, weight, tokens);
+
+            tensor_dump(out, 4, 128, "Embedding OUT Tensor");
         } break;
 
         case OpType::ADD: {
@@ -100,6 +125,8 @@ void Executor::run() {
             auto out             = op->next[0]->tensor();
             auto [pos, rope_cfg] = op->get_params<RopeParams>();
             m_platform.ggml_backends[model_id]->rope(out, src, pos, rope_cfg);
+
+            tensor_dump(out, 4, 128, "Rope OUT Tensor");
         } break;
 
         case OpType::SOFTMAX: {
@@ -122,6 +149,9 @@ void Executor::run() {
             auto pos   = op->get_params<QNNForwardParams>().pos;
             auto &mask = op->get_params<QNNForwardParams>().mask;
             m_platform.qnn_backend->forward(m_graph.m_model_id, out, x, pos, mask);
+
+            tensor_dump(out, 4, 128, "QNN OUT Tensor");
+
             POWERSERVE_LOG_DEBUG("\033[36m #########((((((((((((<<<<<<<<<<<<<<<calling QNN OpType::QNN_FORWARD end>>>>>>>>>>>>>>>))))))))))))########## \033[0m");
         } break;
         case OpType::QNN_FORWARD_VL: {
