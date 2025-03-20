@@ -48,6 +48,7 @@ static constexpr size_t type_size(QNNDataType type) {
         return 2;
 
     case QNN_DATATYPE_INT_8:
+    case QNN_DATATYPE_UFIXED_POINT_8:
         return 1;
 
     default:
