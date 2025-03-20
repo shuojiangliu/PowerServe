@@ -68,6 +68,7 @@ def convert_model():
         "--act_quantizer_schema asymmetric",
         "--input_list",
         input_list_path,
+        "--debug"
     ]
 
     with open(io_spec_path, "r") as f:
@@ -110,6 +111,7 @@ def generate_library():
         graph_name,
         "--output_dir",
         output_folder,
+        "--debug"
     ]
 
     run(cmd_args)

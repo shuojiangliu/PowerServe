@@ -48,6 +48,24 @@ void Executor::plan() {
     m_platform.ggml_backends[m_graph.m_model_id]->plan(m_graph.ops);
 }
 
+// Debug code: dump a tensor's data
+// void tensor_dump(Tensor* x, size_t max_show_dims, size_t max_show_elems, std::string msg) {
+//     fmt::println("-----------------------------Dumping tensor-----------------------------");
+//     fmt::println("Tensor Type: {}", (size_t)x -> m_dtype);
+//     fmt::println("Dims: {} * {}", x -> m_shape[1], x -> m_shape[0]);
+//     fmt::println("Notes: {}", msg);
+//     fmt::println("Dumping data:");
+//     for(size_t i = 0; i < max_show_dims && i < x -> m_shape[1]; i++) {
+//         fmt::print("Dimension {}:", i);
+//         for(size_t j = 0; j < max_show_elems && j < x -> m_shape[0]; j++) {
+//             fmt::print(" {:.6f}", *((float *)x->get<powerserve::Buffer>().m_data + i * x -> m_shape[0] + j));
+//         }
+//         fmt::println("");
+//     }
+//     fmt::println("-------------------------Tensor dump finished!-------------------------");
+// }
+// Debug code end
+
 void Executor::run() {
     auto &model_id = m_graph.m_model_id;
     plan();
