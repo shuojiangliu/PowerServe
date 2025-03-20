@@ -223,7 +223,7 @@ cmake -B build                                                      \
     -DCMAKE_BUILD_TYPE=Release                                      \
     -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
     -DANDROID_ABI=arm64-v8a                                         \
-    -DANDROID_PLATFORM=android-35                                   \
+    -DANDROID_PLATFORM=android-33                                   \
     -DGGML_OPENMP=OFF                                               \
     -DPOWERSERVE_WITH_QNN=ON
 
