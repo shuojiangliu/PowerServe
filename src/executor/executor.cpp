@@ -49,21 +49,23 @@ void Executor::plan() {
 }
 
 // Debug code: dump a tensor's data
-// void tensor_dump(Tensor* x, size_t max_show_dims, size_t max_show_elems, std::string msg) {
-//     fmt::println("-----------------------------Dumping tensor-----------------------------");
-//     fmt::println("Tensor Type: {}", (size_t)x -> m_dtype);
-//     fmt::println("Dims: {} * {}", x -> m_shape[1], x -> m_shape[0]);
-//     fmt::println("Notes: {}", msg);
-//     fmt::println("Dumping data:");
-//     for(size_t i = 0; i < max_show_dims && i < x -> m_shape[1]; i++) {
-//         fmt::print("Dimension {}:", i);
-//         for(size_t j = 0; j < max_show_elems && j < x -> m_shape[0]; j++) {
-//             fmt::print(" {:.6f}", *((float *)x->get<powerserve::Buffer>().m_data + i * x -> m_shape[0] + j));
-//         }
-//         fmt::println("");
-//     }
-//     fmt::println("-------------------------Tensor dump finished!-------------------------");
-// }
+
+void tensor_dump(Tensor* x, size_t max_show_dims, size_t max_show_elems, std::string msg) {
+    fmt::println("-----------------------------Dumping tensor-----------------------------");
+    fmt::println("Tensor Type: {}", (size_t)x -> m_dtype);
+    fmt::println("Dims: {} * {}", x -> m_shape[1], x -> m_shape[0]);
+    fmt::println("Notes: {}", msg);
+    fmt::println("Dumping data:");
+    for(size_t i = 0; i < max_show_dims && i < x -> m_shape[1]; i++) {
+        fmt::print("Dimension {}:", i);
+        for(size_t j = 0; j < max_show_elems && j < x -> m_shape[0]; j++) {
+            fmt::print(" {:.6f}", *((float *)x->get<CPUBuffer>().m_data + i * x->m_shape[0] + j));
+        }
+        fmt::println("");
+    }
+    fmt::println("-------------------------Tensor dump finished!-------------------------");
+}
+
 // Debug code end
 
 void Executor::run() {
@@ -77,6 +79,9 @@ void Executor::run() {
             auto out      = op->output();
             auto [tokens] = op->get_params<GetEmbeddingParams>();
             m_platform.ggml_backends[model_id]->get_embedding(out, weight, tokens);
+            // Debug code
+            tensor_dump(out, 4, 8, "Embedding tensor");
+            // Debug code end
         } break;
 
         case OpType::ADD: {
@@ -134,6 +139,9 @@ void Executor::run() {
             auto pos   = op->get_params<QNNForwardParams>().pos;
             auto &mask = op->get_params<QNNForwardParams>().mask;
             m_platform.qnn_backend->forward(m_graph.m_model_id, out, x, pos, mask);
+            // Debug code
+            tensor_dump(out, 4, 8, "QNN output tensor\n");
+            // Debug code end
         } break;
         case OpType::QNN_FORWARD_VL: {
             auto x                  = op->prev[0]->tensor();
