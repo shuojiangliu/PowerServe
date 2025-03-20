@@ -21,7 +21,7 @@
 namespace powerserve {
 
 void tensor_dump(Tensor* x, size_t max_show_dims, size_t max_show_elems, std::string msg) {
-    std::ofstream outFile("tensor_dump.txt", std::ios::app);
+    std::ofstream outFile("tensor_dump_all_out.txt", std::ios::app);
     if (!outFile.is_open()) {
         return;
     }
