@@ -31,6 +31,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <numeric>
 
 #ifdef POWERSERVE_ANDROID_LOG
 #include <android/log.h>
@@ -789,6 +790,82 @@ void QNNTensor::print() {
         for (size_t i = 0; i < n_elements(); i++) {
             fmt::println(stderr, "{}", (float)buf[i]);
         }
+    }
+}
+
+/*
+ * Function: dump_dimensions
+ * Behavior: dump at most n_dump_elems elements of every dimension of the QNN tensor in a recursive way
+ * 
+ */
+
+void dump_dimensions_fp32(size_t dimension_index, const float* buffer, const std::vector<size_t> &shape, const std::vector<size_t> &stride, std::vector<size_t> &curr_index, const std::vector<size_t> &n_dump_elems) {
+    if(dimension_index == shape.size() - 1) {
+        // Recurse ends in the last dimension, print elements
+        fmt::print("Dumping elements in dimension {}:", curr_index);
+        size_t base_index = 0;
+        for(size_t i = 0; i < curr_index.size(); i++) {
+            base_index += stride[i] * curr_index[i];
+        } 
+        for(size_t i = 0; i < n_dump_elems[dimension_index] && i < shape[dimension_index]; i++) {
+            fmt::print(" {:.6f}", buffer[base_index + i]);
+        }
+        fmt::println("");
+    } else {
+        for(size_t i = 0; i < n_dump_elems[dimension_index] && i < shape[dimension_index]; i++) {
+            std::vector<size_t> new_index(curr_index);
+            new_index.emplace_back(i);
+            dump_dimensions_fp32(dimension_index + 1, buffer, shape, stride, new_index, n_dump_elems);
+        }
+    }
+}
+
+void dump_dimensions_fp16(size_t dimension_index, const __fp16* buffer, const std::vector<size_t> &shape, const std::vector<size_t> &stride, std::vector<size_t> &curr_index, const std::vector<size_t> &n_dump_elems) {
+    if(dimension_index == shape.size() - 1) {
+        // Recurse ends in the last dimension, print elements
+        fmt::print("Dumping elements in dimension {}:", curr_index);
+        size_t base_index = 0;
+        for(size_t i = 0; i < curr_index.size(); i++) {
+            base_index += stride[i] * curr_index[i];
+        } 
+        for(size_t i = 0; i < n_dump_elems[dimension_index] && i < shape[dimension_index]; i++) {
+            fmt::print(" {:.6f}", (float)buffer[base_index + i]);
+        }
+        fmt::println("");
+    } else {
+        for(size_t i = 0; i < n_dump_elems[dimension_index] && i < shape[dimension_index]; i++) {
+            std::vector<size_t> new_index(curr_index);
+            new_index.emplace_back(i);
+            dump_dimensions_fp16(dimension_index + 1, buffer, shape, stride, new_index, n_dump_elems);
+        }
+    }
+}
+
+void QNNTensor::dump(std::vector<size_t> &n_dump_elems) {
+    
+    fmt::println("--------------------Dumping QNN Tensor--------------------");
+    fmt::println("Tensor name: {}", this->name());
+    fmt::println("Tensor rank: {}", this->shape().size());
+    POWERSERVE_ASSERT(n_dump_elems.size() == this->shape().size());
+    fmt::println("Tensor shape: {}", this->shape());
+
+    std::vector<size_t> shape = this->shape();
+    std::vector<size_t> stride(shape.size(), 1);
+    for(int i = shape.size() - 1; i > -1; i--) {
+        for(int j = shape.size() - 1; j > i; j--) {
+            stride[i] *= shape[j];
+        }
+    }
+
+    std::vector<size_t> init_index = {};        
+    if (type() == QNN_DATATYPE_FLOAT_32) {
+        fmt::println("Tensor dtype: FP32");
+        auto buf = (const float *)buffer_map.at(this);
+        dump_dimensions_fp32(0, buf, shape, stride, init_index, n_dump_elems);
+    } else if (type() == QNN_DATATYPE_FLOAT_16) {
+        fmt::println("Tensor dtype: FP16");
+        auto buf = (const __fp16 *)buffer_map.at(this);
+        dump_dimensions_fp16(0, buf, shape, stride, init_index, n_dump_elems);
     }
 }
 
