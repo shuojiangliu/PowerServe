@@ -216,6 +216,8 @@ struct QNNTensor {
     float quantization_scale() const;
     auto check(const std::vector<size_t> &shape, Qnn_DataType_t datatype) -> QNNTensor *;
     void print();
+    void dump(std::vector<size_t> &n_dump_elems);
+    void dump_to_file(std::ofstream& outfile, std::vector<size_t> &n_dump_elems);
 };
 
 struct Graph {

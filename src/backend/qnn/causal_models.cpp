@@ -271,170 +271,126 @@ void CausalLM::reset_kv_cache() {
     kv_cache->truncate_tokens(m_gparams.kv_size);
 }
 
-void print_tensor_slice(const char* name, const float* data, size_t count, size_t stride = 1) {
-    fmt::println("Dumping {} with {} elements (only printing first 16 elements)", name, count);
-    for (size_t j = 0; j < std::min(size_t(16), count); j++) {
-        fmt::print("{:.6f} ", data[j * stride]);
-    }
-    fmt::println("");
-}
+// Debug code
+void print_chunk_tensors(const ModelChunk* chunk, size_t max_show_layers, size_t max_show_heads) {
+    fmt::println("--------------------Dumping QNN Buffers--------------------");
+    fmt::println("Layers: {} to {}", chunk->m_config.start_layer_id, chunk->m_config.end_layer_id);
 
-void print_layer_head_tensor(const char* tensor_type, size_t layer_id, size_t head_id, const float* data, size_t count) {
-    fmt::print("Layer {} Head {} {} with {} elements (only printing first 16 elements): ", layer_id, head_id, tensor_type, count);
-    for (size_t j = 0; j < std::min(size_t(16), count); j++) {
-        fmt::print("{:.6f} ", data[j]);
-    }
-    fmt::println("");
-}
+    // X: [batch_size, embedding_dim]
+    std::vector<size_t> dump_x_elems={4, 8};
+    chunk -> m_tensors.at("x") -> dump(dump_x_elems);
 
-void print_chunk_tensors(const ModelChunk* chunk) {
-    fmt::println("--------------------------------Dumping QNN Buffers--------------------------------");
+    // ROPE: [batch_size, rope_dim]
+    // std::vector<size_t> dump_rope_elems={1, 8};
+    // chunk -> m_tensors.at("rope_embed_sin") -> dump(dump_rope_elems);
+    // chunk -> m_tensors.at("rope_embed_cos") -> dump(dump_rope_elems);
 
-    print_tensor_slice("X",
-        static_cast<float*>(chunk->m_buffers.at("x")->m_data),
-        chunk->m_tensors.at("x")->n_elements());
-
-    print_tensor_slice("ROPE SIN",
-        static_cast<float*>(chunk->m_buffers.at("rope_embed_sin")->m_data),
-        chunk->m_tensors.at("rope_embed_sin")->n_elements());
-
-    print_tensor_slice("ROPE COS",
-        static_cast<float*>(chunk->m_buffers.at("rope_embed_cos")->m_data),
-        chunk->m_tensors.at("rope_embed_cos")->n_elements());
-
-    print_tensor_slice("ATTN BIAS",
-        static_cast<float*>(chunk->m_buffers.at("attn_bias")->m_data),
-        chunk->m_tensors.at("attn_bias")->n_elements());
+    // MASK: [batch_size, ctx_length]
+    // std::vector<size_t> dump_mask_elems={1, 32};
+    // chunk -> m_tensors.at("attn_bias") -> dump(dump_mask_elems);
 
     const size_t num_layers = chunk->n_layers();
     const size_t n_kv_heads = chunk->m_model_config.llm.n_kv_heads;
     const size_t start_layer_id = chunk->m_config.start_layer_id;
 
-    for (size_t l = 0; l < num_layers; l++) {
-        for (size_t h = 0; h < n_kv_heads; h++) {
-            auto key_name = fmt::format("layer_{}_key_{}", start_layer_id + l, h);
-            if (chunk->m_buffers.contains(key_name)) {
-                auto data = static_cast<float*>(chunk->m_buffers.at(key_name)->m_data);
-                print_layer_head_tensor("Key", start_layer_id + l, h, data,
-                    chunk->m_tensors.at(key_name)->n_elements());
-            }
+    // KEY / VALUE: [batch_size, head_dim]
+    std::vector<size_t> dump_kv_elems={1, 32};
 
-            auto key_cache_name = fmt::format("layer_{}_key_t_cache_{}", start_layer_id + l, h);
-            if (chunk->m_buffers.contains(key_cache_name)) {
-                auto data = static_cast<float*>(chunk->m_buffers.at(key_cache_name)->m_data);
-                print_layer_head_tensor("KeyCache", start_layer_id + l, h, data,
-                    chunk->m_tensors.at(key_cache_name)->n_elements());
-            }
+    // We don't recommend to dump KV cache as it is hard to find the token id you want
+    // KEY TRANSPOSED CACHE: [head_dim, ctx_length]
+    // std::vector<size_t> dump_ktc_elems={1, 32};
+    // VALUE CACHE: [ctx_length, head_dim]
+    // std::vector<size_t> dump_vc_elems={1, 32};
+
+    for (size_t l = 0; l < num_layers && l < max_show_layers; l++) {
+        for (size_t h = 0; h < n_kv_heads && h < max_show_heads; h++) {
+            auto key_name = fmt::format("layer_{}_key_{}", start_layer_id + l, h);
+            POWERSERVE_ASSERT(chunk->m_buffers.contains(key_name));
+            chunk -> m_tensors.at(key_name) -> dump(dump_kv_elems);
 
             auto value_name = fmt::format("layer_{}_value_{}", start_layer_id + l, h);
-            if (chunk->m_buffers.contains(value_name)) {
-                auto data = static_cast<float*>(chunk->m_buffers.at(value_name)->m_data);
-                print_layer_head_tensor("Value", start_layer_id + l, h, data,
-                    chunk->m_tensors.at(value_name)->n_elements());
-            }
+            POWERSERVE_ASSERT(chunk->m_buffers.contains(value_name));
+            chunk -> m_tensors.at(value_name) -> dump(dump_kv_elems);
 
-            auto value_cache_name = fmt::format("layer_{}_value_cache_{}", start_layer_id + l, h);
-            if (chunk->m_buffers.contains(value_cache_name)) {
-                auto data = static_cast<float*>(chunk->m_buffers.at(value_cache_name)->m_data);
-                print_layer_head_tensor("ValueCache", start_layer_id + l, h, data,
-                    chunk->m_tensors.at(value_cache_name)->n_elements());
-            }
+            // auto key_t_cache_name = fmt::format("layer_{}_key_t_cache_{}", start_layer_id + l, h);
+            // POWERSERVE_ASSERT(chunk->m_buffers.contains(key_t_cache_name));
+            // chunk -> m_tensors.at(key_t_cache_name) -> dump(dump_ktc_elems);
+
+            // auto value_cache_name = fmt::format("layer_{}_value_cache_{}", start_layer_id + l, h);
+            // POWERSERVE_ASSERT(chunk->m_buffers.contains(value_cache_name));
+            // chunk -> m_tensors.at(value_cache_name) -> dump(dump_vc_elems);
         }
     }
 
-    print_tensor_slice("OUT",
-        static_cast<float*>(chunk->m_buffers.at("out")->m_data),
-        chunk->m_tensors.at("out")->n_elements());
+    // OUT: [batch_size, embedding_dim]
+    std::vector<size_t> dump_out_elems={4, 8};
+    chunk -> m_tensors.at("out") -> dump(dump_out_elems);
 
-    fmt::println("--------------------------------QNN Buffers Dump Finished--------------------------------");
+    fmt::println("--------------------QNN Buffer Dump End--------------------");
 }
 
 static std::atomic<size_t> tensor_dump_counter{0};
 
-void write_tensor_slice_to_file(std::ofstream& file, const char* name, const float* data, size_t count, size_t stride = 1) {
-    file << "Dumping " << name << " with " << count << " elements (only writing first 16 elements)\n";
-    for (size_t j = 0; j < std::min(size_t(16), count); j++) {
-        file << fmt::format("{:.6f} ", data[j * stride]);
-    }
-    file << "\n";
-}
-
-void write_layer_head_tensor_to_file(std::ofstream& file, const char* tensor_type, size_t layer_id, size_t head_id, const float* data, size_t count) {
-    file << fmt::format("Layer {} Head {} {} with {} elements (only writing first 16 elements): ", layer_id, head_id, tensor_type, count);
-    for (size_t j = 0; j < std::min(size_t(16), count); j++) {
-        file << fmt::format("{:.6f} ", data[j]);
-    }
-    file << "\n";
-}
-
-void write_chunk_tensors_to_file(const ModelChunk* chunk, const std::string& filename) {
-    std::ofstream file(filename, std::ios::app);
-    if (!file.is_open()) {
-        POWERSERVE_LOG_ERROR("Failed to open file: {}", filename);
-        return;
+void write_chunk_tensors_to_file(const ModelChunk* chunk, size_t max_show_layers, size_t max_show_heads) {
+    // Create filename based on chunk info
+    size_t file_number = ++tensor_dump_counter;
+    std::string filename = fmt::format("chunk_dumping_{:04d}_layer_{:02d}_to_{:02d}.txt",
+                                     file_number,
+                                     chunk->m_config.start_layer_id, 
+                                     chunk->m_config.end_layer_id);
+    
+    std::ofstream outfile(filename, std::ios::app);
+    if (!outfile.is_open()) {
+        POWERSERVE_ABORT("Failed to open file: {}", filename);
     }
 
-    file << "--------------------------------Dumping QNN Buffers--------------------------------\n";
+    outfile << "--------------------Dumping QNN Buffers--------------------\n";
+    outfile << fmt::format("Layers: {} to {}\n", chunk->m_config.start_layer_id, chunk->m_config.end_layer_id);
 
-    write_tensor_slice_to_file(file, "X",
-        static_cast<float*>(chunk->m_buffers.at("x")->m_data),
-        chunk->m_tensors.at("x")->n_elements());
+    // X: [batch_size, embedding_dim]
+    std::vector<size_t> dump_x_elems={4, 8};
+    chunk->m_tensors.at("x")->dump_to_file(outfile, dump_x_elems);
 
-    write_tensor_slice_to_file(file, "ROPE SIN",
-        static_cast<float*>(chunk->m_buffers.at("rope_embed_sin")->m_data),
-        chunk->m_tensors.at("rope_embed_sin")->n_elements());
+    // ROPE: [batch_size, rope_dim]
+    // std::vector<size_t> dump_rope_elems={1, 8};
+    // chunk->m_tensors.at("rope_embed_sin")->dump_to_file(outfile, dump_rope_elems);
+    // chunk->m_tensors.at("rope_embed_cos")->dump_to_file(outfile, dump_rope_elems);
 
-    write_tensor_slice_to_file(file, "ROPE COS",
-        static_cast<float*>(chunk->m_buffers.at("rope_embed_cos")->m_data),
-        chunk->m_tensors.at("rope_embed_cos")->n_elements());
-
-    write_tensor_slice_to_file(file, "ATTN BIAS",
-        static_cast<float*>(chunk->m_buffers.at("attn_bias")->m_data),
-        chunk->m_tensors.at("attn_bias")->n_elements());
+    // MASK: [batch_size, ctx_length]
+    // std::vector<size_t> dump_mask_elems={1, 32};
+    // chunk->m_tensors.at("attn_bias")->dump_to_file(outfile, dump_mask_elems);
 
     const size_t num_layers = chunk->n_layers();
     const size_t n_kv_heads = chunk->m_model_config.llm.n_kv_heads;
     const size_t start_layer_id = chunk->m_config.start_layer_id;
 
-    for (size_t l = 0; l < num_layers; l++) {
-        for (size_t h = 0; h < n_kv_heads; h++) {
-            auto key_name = fmt::format("layer_{}_key_{}", start_layer_id + l, h);
-            if (chunk->m_buffers.contains(key_name)) {
-                auto data = static_cast<float*>(chunk->m_buffers.at(key_name)->m_data);
-                write_layer_head_tensor_to_file(file, "Key", start_layer_id + l, h, data,
-                    chunk->m_tensors.at(key_name)->n_elements());
-            }
+    // KEY / VALUE: [batch_size, head_dim]
+    std::vector<size_t> dump_kv_elems={1, 32};
 
-            auto key_cache_name = fmt::format("layer_{}_key_t_cache_{}", start_layer_id + l, h);
-            if (chunk->m_buffers.contains(key_cache_name)) {
-                auto data = static_cast<float*>(chunk->m_buffers.at(key_cache_name)->m_data);
-                write_layer_head_tensor_to_file(file, "KeyCache", start_layer_id + l, h, data,
-                    chunk->m_tensors.at(key_cache_name)->n_elements());
-            }
+    for (size_t l = 0; l < num_layers && l < max_show_layers; l++) {
+        for (size_t h = 0; h < n_kv_heads && h < max_show_heads; h++) {
+            auto key_name = fmt::format("layer_{}_key_{}", start_layer_id + l, h);
+            POWERSERVE_ASSERT(chunk->m_buffers.contains(key_name));
+            chunk->m_tensors.at(key_name)->dump_to_file(outfile, dump_kv_elems);
 
             auto value_name = fmt::format("layer_{}_value_{}", start_layer_id + l, h);
-            if (chunk->m_buffers.contains(value_name)) {
-                auto data = static_cast<float*>(chunk->m_buffers.at(value_name)->m_data);
-                write_layer_head_tensor_to_file(file, "Value", start_layer_id + l, h, data,
-                    chunk->m_tensors.at(value_name)->n_elements());
-            }
+            POWERSERVE_ASSERT(chunk->m_buffers.contains(value_name));
+            chunk->m_tensors.at(value_name)->dump_to_file(outfile, dump_kv_elems);
 
-            auto value_cache_name = fmt::format("layer_{}_value_cache_{}", start_layer_id + l, h);
-            if (chunk->m_buffers.contains(value_cache_name)) {
-                auto data = static_cast<float*>(chunk->m_buffers.at(value_cache_name)->m_data);
-                write_layer_head_tensor_to_file(file, "ValueCache", start_layer_id + l, h, data,
-                    chunk->m_tensors.at(value_cache_name)->n_elements());
-            }
+            // KV cache dumping code commented out as in original
+            // auto key_t_cache_name = fmt::format("layer_{}_key_t_cache_{}", start_layer_id + l, h);
+            // auto value_cache_name = fmt::format("layer_{}_value_cache_{}", start_layer_id + l, h);
         }
     }
 
-    write_tensor_slice_to_file(file, "OUT",
-        static_cast<float*>(chunk->m_buffers.at("out")->m_data),
-        chunk->m_tensors.at("out")->n_elements());
+    // OUT: [batch_size, embedding_dim]
+    std::vector<size_t> dump_out_elems={4, 8};
+    chunk->m_tensors.at("out")->dump_to_file(outfile, dump_out_elems);
 
-    file << "--------------------------------QNN Buffers Dump Finished--------------------------------\n\n";
-    file.close();
+    outfile << "--------------------QNN Buffer Dump End--------------------\n";
+    outfile.close();
 }
+// Debug code end
 
 void CausalLM::Batch::forward() {
     size_t batch_size = pos.size();
@@ -459,15 +415,13 @@ void CausalLM::Batch::forward() {
         chunks[i]->execute(parent.m_excute_time_ns);
 #else
         chunks[i]->execute();
-
+        
+        // Debug code
         // option 1: print tensor information to console
-        // print_chunk_tensors(chunks[i].get());
-
+        print_chunk_tensors(chunks[i].get(), 1, 2);
         // option 2: write tensor information to file
-        size_t file_number = ++tensor_dump_counter;
-
-        std::string filename = fmt::format("tensor_dump_{:04d}_chunk_{:02d}.txt", file_number, i);
-        write_chunk_tensors_to_file(chunks[i].get(), filename);
+        write_chunk_tensors_to_file(chunks[i].get(), 1, 2);
+        // Debug code end
 
 #endif
         if (i + 1 < chunks.size()) {
