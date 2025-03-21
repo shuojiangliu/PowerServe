@@ -20,28 +20,69 @@
 
 namespace powerserve {
 
-void tensor_dump(Tensor* x, size_t max_show_dims, size_t max_show_elems, std::string msg) {
-    std::ofstream outFile("tensor_dump_all_out.txt", std::ios::app);
-    if (!outFile.is_open()) {
-        return;
-    }
-
-    outFile << "-----------------------------Dumping tensor------------------------------------\n";
-    outFile << "TENSOR Type: " << (size_t)x->m_dtype << "\n";
-    outFile << "Dims: " << x->m_shape[1] << " * " << x->m_shape[0] << "\n";
-    outFile << "Notes: " << msg << "\n";
-    outFile << "Dumping data:\n";
-
-    for (size_t i = 0; i < max_show_dims && i < x->m_shape[1]; i++) {
-        outFile << "Dimension " << i << ":";
-        for (size_t j = 0; j < max_show_elems && j < x->m_shape[0]; j++) {
-            float value = *((float *)x->get<CPUBuffer>().m_data + i * x->m_shape[0] + j);
-            outFile << " " << std::fixed << std::setprecision(6) << value;
+// Debug code: dump a tensor's data
+void tensor_dump(Tensor* x, std::vector<size_t> max_show_elems, std::string name) {
+    POWERSERVE_ASSERT(x->m_dtype == DataType::FP32);
+    auto shape = x->m_shape;
+    auto stride = x->get<CPUBuffer>().m_stride;
+    printf("--------------------Dumping GGML tensor-------------------\n");
+    printf("Tensor name: %s\n", name.c_str());
+    printf("Tensor rank: 4\n");
+    printf("Tensor shape: [%ld, %ld, %ld, %ld]\n", shape[3], shape[2], shape[1], shape[0]);
+    printf("Tensor dtype: FP32\n");
+    for (size_t i3 = 0; i3 < shape[3] && i3 < max_show_elems[3]; i3++) {
+        for (size_t i2 = 0; i2 < shape[2] && i2 < max_show_elems[2]; i2++) {
+            for (size_t i1 = 0; i1 < shape[1] && i1 < max_show_elems[1]; i1++) {
+                printf("Dumping elements in dimension [%ld, %ld, %ld]:", i3, i2, i1);
+                for (size_t i0 = 0; i0 < shape[0] && i0 < max_show_elems[0]; i0++) {
+                    float *ptr = (float *)((char *)x->get<CPUBuffer>().m_data + i3 * stride[3] + i2 * stride[2] + i1 * stride[1] + i0 * stride[0]);
+                    printf(" %.6f", (double)*ptr);
+                }
+                printf("\n");
+            }
         }
-        outFile << "\n";
     }
-    outFile << "-----------------------------Tensor dump finished!-----------------------------\n";
 }
+
+static std::atomic<size_t> tensor_counter{0};
+
+void tensor_dump_to_file(Tensor* x, std::vector<size_t> max_show_elems, std::string name) {
+    POWERSERVE_ASSERT(x->m_dtype == DataType::FP32);
+    auto shape = x->m_shape;
+    auto stride = x->get<CPUBuffer>().m_stride;
+
+    // Create unique filename using counter
+    size_t file_number = ++tensor_counter;
+    std::string filename = fmt::format("tensor_dump_{:04d}_{}.txt", file_number, name);
+    
+    std::ofstream outfile(filename, std::ios::app);
+    if (!outfile.is_open()) {
+        POWERSERVE_ABORT("Failed to open file: {}", filename);
+    }
+
+    outfile << "--------------------Dumping GGML tensor-------------------\n";
+    outfile << fmt::format("Tensor name: {}\n", name);
+    outfile << "Tensor rank: 4\n";
+    outfile << fmt::format("Tensor shape: [{}, {}, {}, {}]\n", shape[3], shape[2], shape[1], shape[0]);
+    outfile << "Tensor dtype: FP32\n";
+
+    for (size_t i3 = 0; i3 < shape[3] && i3 < max_show_elems[3]; i3++) {
+        for (size_t i2 = 0; i2 < shape[2] && i2 < max_show_elems[2]; i2++) {
+            for (size_t i1 = 0; i1 < shape[1] && i1 < max_show_elems[1]; i1++) {
+                outfile << fmt::format("Dumping elements in dimension [{}, {}, {}]:", i3, i2, i1);
+                for (size_t i0 = 0; i0 < shape[0] && i0 < max_show_elems[0]; i0++) {
+                    float *ptr = (float *)((char *)x->get<CPUBuffer>().m_data + 
+                               i3 * stride[3] + i2 * stride[2] + i1 * stride[1] + i0 * stride[0]);
+                    outfile << fmt::format(" {:.6f}", (double)*ptr);
+                }
+                outfile << "\n";
+            }
+        }
+    }
+    outfile << "--------------------GGML Tensor Dump End-------------------\n";
+    outfile.close();
+}
+// Debug code end
 
 void Executor::allocate_buffers() {
     for (auto tensor : m_graph.tensors) {
@@ -85,7 +126,10 @@ void Executor::run() {
             auto [tokens] = op->get_params<GetEmbeddingParams>();
             m_platform.ggml_backends[model_id]->get_embedding(out, weight, tokens);
 
-            tensor_dump(out, 4, 128, "Embedding OUT Tensor");
+            // Debug code
+            std::vector<size_t> dump_embedding_dims={8, 6, 1, 1};
+            tensor_dump_to_file(out, dump_embedding_dims, "Embedding");
+            // Debug code end
         } break;
 
         case OpType::ADD: {
@@ -125,8 +169,6 @@ void Executor::run() {
             auto out             = op->next[0]->tensor();
             auto [pos, rope_cfg] = op->get_params<RopeParams>();
             m_platform.ggml_backends[model_id]->rope(out, src, pos, rope_cfg);
-
-            tensor_dump(out, 4, 128, "Rope OUT Tensor");
         } break;
 
         case OpType::SOFTMAX: {
@@ -150,7 +192,10 @@ void Executor::run() {
             auto &mask = op->get_params<QNNForwardParams>().mask;
             m_platform.qnn_backend->forward(m_graph.m_model_id, out, x, pos, mask);
 
-            tensor_dump(out, 4, 128, "QNN OUT Tensor");
+            // Debug code
+            std::vector<size_t> dump_qnn_dims={8, 6, 1, 1};
+            tensor_dump_to_file(out, dump_qnn_dims, "QNN");
+            // Debug code end
 
             POWERSERVE_LOG_DEBUG("\033[36m #########((((((((((((<<<<<<<<<<<<<<<calling QNN OpType::QNN_FORWARD end>>>>>>>>>>>>>>>))))))))))))########## \033[0m");
         } break;
