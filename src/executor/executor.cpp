@@ -49,20 +49,27 @@ void Executor::plan() {
 }
 
 // Debug code: dump a tensor's data
-void tensor_dump(Tensor* x, size_t max_show_dims, size_t max_show_elems, std::string msg) {
-    fmt::println("-----------------------------Dumping tensor-----------------------------");
-    fmt::println("Tensor Type: {}", (size_t)x -> m_dtype);
-    fmt::println("Dims: {} * {}", x -> m_shape[1], x -> m_shape[0]);
-    fmt::println("Notes: {}", msg);
-    fmt::println("Dumping data:");
-    for(size_t i = 0; i < max_show_dims && i < x -> m_shape[1]; i++) {
-        fmt::print("Dimension {}:", i);
-        for(size_t j = 0; j < max_show_elems && j < x -> m_shape[0]; j++) {
-            fmt::print(" {:.6f}", *((float *)x->get<CPUBuffer>().m_data + i * x->m_shape[0] + j));
+void tensor_dump(Tensor* x, std::vector<size_t> max_show_elems, std::string name) {
+    POWERSERVE_ASSERT(x->m_dtype == DataType::FP32);
+    auto shape = x->m_shape;
+    auto stride = x->get<CPUBuffer>().m_stride;
+    printf("--------------------Dumping GGML tensor-------------------\n");
+    printf("Tensor name: %s\n", name.c_str());
+    printf("Tensor rank: 4\n");
+    printf("Tensor shape: [%ld, %ld, %ld, %ld]\n", shape[3], shape[2], shape[1], shape[0]);
+    printf("Tensor dtype: FP32\n");
+    for (size_t i3 = 0; i3 < shape[3] && i3 < max_show_elems[3]; i3++) {
+        for (size_t i2 = 0; i2 < shape[2] && i2 < max_show_elems[2]; i2++) {
+            for (size_t i1 = 0; i1 < shape[1] && i1 < max_show_elems[1]; i1++) {
+                printf("Dumping elements in dimension [%ld, %ld, %ld]:", i3, i2, i1);
+                for (size_t i0 = 0; i0 < shape[0] && i0 < max_show_elems[0]; i0++) {
+                    float *ptr = (float *)((char *)x->get<CPUBuffer>().m_data + i3 * stride[3] + i2 * stride[2] + i1 * stride[1] + i0 * stride[0]);
+                    printf(" %.6f", (double)*ptr);
+                }
+                printf("\n");
+            }
         }
-        fmt::println("");
     }
-    fmt::println("-------------------------Tensor dump finished!-------------------------");
 }
 // Debug code end
 
@@ -78,7 +85,8 @@ void Executor::run() {
             auto [tokens] = op->get_params<GetEmbeddingParams>();
             m_platform.ggml_backends[model_id]->get_embedding(out, weight, tokens);
             // Debug code
-            tensor_dump(out, 4, 8, "Embedding tensor");
+            std::vector<size_t> dump_embedding_dims={8, 6, 1, 1};
+            tensor_dump(out, dump_embedding_dims, "Embedding");
             // Debug code end
         } break;
 
@@ -138,7 +146,8 @@ void Executor::run() {
             auto &mask = op->get_params<QNNForwardParams>().mask;
             m_platform.qnn_backend->forward(m_graph.m_model_id, out, x, pos, mask);
             // Debug code
-            tensor_dump(out, 4, 8, "QNN output tensor\n");
+            std::vector<size_t> dump_qnn_dims={8, 6, 1, 1};
+            tensor_dump(out, dump_qnn_dims, "QNN");
             // Debug code end
         } break;
         case OpType::QNN_FORWARD_VL: {
