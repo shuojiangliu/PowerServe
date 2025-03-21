@@ -240,7 +240,6 @@ void CausalLM::reset_kv_cache() {
 }
 
 // Debug code
-
 void print_chunk_tensors(const ModelChunk* chunk, size_t max_show_layers, size_t max_show_heads) {
     fmt::println("--------------------Dumping QNN Buffers--------------------");
     fmt::println("Layers: {} to {}", chunk->m_config.start_layer_id, chunk->m_config.end_layer_id);
@@ -299,7 +298,6 @@ void print_chunk_tensors(const ModelChunk* chunk, size_t max_show_layers, size_t
 
     fmt::println("--------------------QNN Buffer Dump End--------------------");
 }
-
 // Debug code end
 
 void CausalLM::Batch::forward() {

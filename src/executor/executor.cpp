@@ -49,7 +49,6 @@ void Executor::plan() {
 }
 
 // Debug code: dump a tensor's data
-
 void tensor_dump(Tensor* x, size_t max_show_dims, size_t max_show_elems, std::string msg) {
     fmt::println("-----------------------------Dumping tensor-----------------------------");
     fmt::println("Tensor Type: {}", (size_t)x -> m_dtype);
@@ -65,7 +64,6 @@ void tensor_dump(Tensor* x, size_t max_show_dims, size_t max_show_elems, std::st
     }
     fmt::println("-------------------------Tensor dump finished!-------------------------");
 }
-
 // Debug code end
 
 void Executor::run() {
