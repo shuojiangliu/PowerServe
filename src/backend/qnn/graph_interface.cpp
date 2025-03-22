@@ -236,6 +236,9 @@ void ModelChunk::load_kv(KVCacheInterface &kv_cache) {
 
         std::vector<__fp16> fp16_data(n_elements);
         for (size_t i = 0; i < n_elements; i++) {
+            // Debug code: dump kv file buffer
+            if(i < 16) fmt::print("{:.6f} ", kv_cache_data[i]);
+            // Debug code end
             fp16_data[i] = kv_cache_data[i];
         }
 
