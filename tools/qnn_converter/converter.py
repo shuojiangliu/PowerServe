@@ -109,13 +109,13 @@ if __name__ == "__main__":
         description="Convert the model in safetensors format to a QNN executable binary format."
     )
 
-    parser.add_argument("--n-threads", type=int, default=4, help="Number of threads to use when exporting the model.")
+    parser.add_argument("--n-threads", type=int, default=2, help="Number of threads to use when exporting the model.")
     parser.add_argument("--model-folder", type=str, help="Model folder path.", required=True)
     parser.add_argument("--model-name", type=str, help="Model name.", required=True)
     parser.add_argument(
-        "--system-prompt-file", type=str, default="system_prompt.txt", help="System prompt file path.", required=True
+        "--system-prompt-file", type=str, default="./prompt/system_prompt_llama.txt", help="System prompt file path.", required=True
     )
-    parser.add_argument("--prompt-file", type=str, default="lab_intro.md", help="Prompt file path.", required=True)
+    parser.add_argument("--prompt-file", type=str, default="./prompt/lab_intro_llama.md", help="Prompt file path.", required=True)
     parser.add_argument("--build-folder", type=str, default="./build")
     parser.add_argument("--output-folder", type=str, default="./output")
     parser.add_argument("--max-n-tokens", type=int, default=1000)
