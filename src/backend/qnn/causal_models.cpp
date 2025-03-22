@@ -266,9 +266,9 @@ void print_chunk_tensors(const ModelChunk* chunk, size_t max_show_layers, size_t
 
     // We don't recommend to dump KV cache as it is hard to find the token id you want
     // KEY TRANSPOSED CACHE: [head_dim, ctx_length]
-    // std::vector<size_t> dump_ktc_elems={1, 32};
+    std::vector<size_t> dump_ktc_elems={32, 64};
     // VALUE CACHE: [ctx_length, head_dim]
-    // std::vector<size_t> dump_vc_elems={1, 32};
+    std::vector<size_t> dump_vc_elems={64, 32};
 
     for (size_t l = 0; l < num_layers && l < max_show_layers; l++) {
         for (size_t h = 0; h < n_kv_heads && h < max_show_heads; h++) {
@@ -282,13 +282,13 @@ void print_chunk_tensors(const ModelChunk* chunk, size_t max_show_layers, size_t
             POWERSERVE_ASSERT(chunk->m_buffers.contains(value_name));
             chunk -> m_tensors.at(value_name) -> dump(dump_kv_elems);
 
-            // auto key_t_cache_name = fmt::format("layer_{}_key_t_cache_{}", start_layer_id + l, h);
-            // POWERSERVE_ASSERT(chunk->m_buffers.contains(key_t_cache_name));
-            // chunk -> m_tensors.at(key_t_cache_name) -> dump(dump_ktc_elems);
+            auto key_t_cache_name = fmt::format("layer_{}_key_t_cache_{}", start_layer_id + l, h);
+            POWERSERVE_ASSERT(chunk->m_buffers.contains(key_t_cache_name));
+            chunk -> m_tensors.at(key_t_cache_name) -> dump(dump_ktc_elems);
 
-            // auto value_cache_name = fmt::format("layer_{}_value_cache_{}", start_layer_id + l, h);
-            // POWERSERVE_ASSERT(chunk->m_buffers.contains(value_cache_name));
-            // chunk -> m_tensors.at(value_cache_name) -> dump(dump_vc_elems);
+            auto value_cache_name = fmt::format("layer_{}_value_cache_{}", start_layer_id + l, h);
+            POWERSERVE_ASSERT(chunk->m_buffers.contains(value_cache_name));
+            chunk -> m_tensors.at(value_cache_name) -> dump(dump_vc_elems);
         }
     }
 
@@ -322,7 +322,7 @@ void CausalLM::Batch::forward() {
         chunks[i]->execute();
 #endif
         // Debug code
-        print_chunk_tensors(chunks[i].get(), 1, 2);
+        print_chunk_tensors(chunks[i].get(), 2, 2);
         // Debug code end
 
         if (i + 1 < chunks.size()) {
