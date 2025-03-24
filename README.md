@@ -225,7 +225,10 @@ cmake -B build                                                      \
     -DANDROID_ABI=arm64-v8a                                         \
     -DANDROID_PLATFORM=android-33                                   \
     -DGGML_OPENMP=OFF                                               \
-    -DPOWERSERVE_WITH_QNN=ON
+    -DPOWERSERVE_WITH_QNN=ON                                        \
+    -DPOWERSERVE_DUMP_TENSORS=OFF                                   \
+    -DPOWERSERVE_USE_SA8295=ON                                      \
+    -DPOWERSERVE_USE_DUMMY=OFF
 
 cmake --build build
 ```

@@ -14,12 +14,17 @@ parser.add_argument("--n-model-chunks", type=int, required=True)
 parser.add_argument("--artifact-name", type=str, required=True)
 parser.add_argument("--graph-names", type=str, nargs="+", required=True)
 parser.add_argument("--soc", choices=soc_map.keys(), default="8650")
+parser.add_argument("--silent", action="store_true", help="Hide the shell command arguments.")
 args = parser.parse_args()
 
 
 def run(cmd_args: list):
     cmd = " ".join(map(str, cmd_args))
-    print(f"> {cmd}")
+    if args.silent:
+        cmd_short = " ".join(map(str, cmd_args[:2]))
+        print(f"> {cmd_short}")
+    else:
+        print(f"> {cmd}")
     ret = subprocess.Popen(cmd, shell=True).wait()
     assert ret == 0
 
@@ -37,7 +42,8 @@ def build_shared_object(chunk_id: int):
         subdir = "output_embedding"
     else:
         subdir = f"model_chunk_{chunk_id}"
-    run([
+
+    command = [
         "python",
         root_folder / "build_shared_object.py",
         "--model",
@@ -54,7 +60,11 @@ def build_shared_object(chunk_id: int):
         f"{args.artifact_name}_{chunk_id}" if chunk_id == -1 else "lm_head",
         "--graph-names",
         " ".join(args.graph_names),
-    ])
+    ]
+
+    if args.silent:
+        command.insert(2, "--silent")
+    run(command)
 
 
 def build_binary(chunk_id: int):
@@ -66,7 +76,7 @@ def build_binary(chunk_id: int):
         subdir = "output_embedding"
     else:
         subdir = f"model_chunk_{chunk_id}"
-    run([
+    command = [
         "python",
         root_folder / "generate_binary.py",
         "--build-folder",
@@ -77,7 +87,11 @@ def build_binary(chunk_id: int):
         " ".join(args.graph_names),
         "--soc",
         args.soc,
-    ])
+    ]
+
+    if args.silent:
+        command.insert(2, "--silent")
+    run(command)
 
 
 multiprocessing.Process()

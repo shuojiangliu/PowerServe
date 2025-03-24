@@ -26,6 +26,8 @@
     --batch-sizes 1 128 \
     --artifact-name llama3_2_1b \
     --n-model-chunk 1 \
+    --silent \
+    --clear-build-files \
     --soc 8295
     # Note:
     # 1. System-prompt-file and lab_intro_llama.md should be adjusted based on whether it is an Instruct model and the model template

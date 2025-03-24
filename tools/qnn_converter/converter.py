@@ -7,8 +7,11 @@ from pathlib import Path
 from soc_config import soc_map
 
 
-def run_shell_command(command):
-    print(f">{' '.join(command.split())}")
+def run_shell_command(command, is_silent=False):
+    if is_silent:
+        print(f"> {' '.join(command.split()[:2])}")
+    else:
+        print(f"> {' '.join(command.split())}")
     ret = subprocess.Popen(command, shell=True).wait()
     assert ret == 0
 
@@ -71,10 +74,11 @@ def main(args):
             --n-model-chunks {args.n_model_chunks}"""
         if args.fp16_lm_head:
             onnx_command += " --fp16-lm-head"
-        run_shell_command(onnx_command)
+        run_shell_command(onnx_command, args.silent)
 
         generate_so_command = f"""
         python build_all_layers.py \
+            {'--silent' if args.silent else ''} \
             --n-threads {args.n_threads} \
             --build-folder {args.build_folder} \
             --batch-size {i} \
@@ -82,14 +86,16 @@ def main(args):
             --artifact-name {args.artifact_name} \
             --graph-names batch_{i}
         """
-        run_shell_command(generate_so_command)
+        run_shell_command(generate_so_command, args.silent)
 
-        # rm_command = f"rm -rf {args.build_folder}/m*/batch_{i}/data&&rm -rf {args.build_folder}/m*/batch_{i}/onnx_model"
-        # run_shell_command(rm_command)
+        if args.clear_build_files:
+            rm_command = f"rm -rf {args.build_folder}/m*/batch_{i}/data&&rm -rf {args.build_folder}/m*/batch_{i}/onnx_model"
+            run_shell_command(rm_command)
 
     get_config_file(args.build_folder, args.batch_sizes)
     generate_binary_command = f"""
         python build_all_layers.py \
+            {'--silent' if args.silent else ''} \
             --n-threads {args.n_threads} \
             --build-folder {args.build_folder} \
             --artifact-name {args.artifact_name} \
@@ -97,11 +103,12 @@ def main(args):
             --n-model-chunks {args.n_model_chunks} \
             --soc {args.soc}
         """
-    run_shell_command(generate_binary_command)
+    run_shell_command(generate_binary_command, args.silent)
 
     get_output_folder(args.output_folder, args.batch_sizes[0], soc_map[args.soc].htp_version)
 
-    # run_shell_command(f"rm -r {args.build_folder}")
+    if args.clear_build_files:
+        run_shell_command(f"rm -r {args.build_folder}")
 
 
 if __name__ == "__main__":
@@ -118,12 +125,15 @@ if __name__ == "__main__":
     parser.add_argument("--prompt-file", type=str, default="./prompt/lab_intro_llama.md", help="Prompt file path.", required=True)
     parser.add_argument("--build-folder", type=str, default="./build")
     parser.add_argument("--output-folder", type=str, default="./output")
-    parser.add_argument("--max-n-tokens", type=int, default=1000)
+    parser.add_argument("--max-n-tokens", type=int, default=1280)
     parser.add_argument("--n-model-chunks", type=int, default=1, help="Number of model chunks.")
     parser.add_argument("--artifact-name", type=str, required=True)
     parser.add_argument("--batch-sizes", type=int, nargs="+", required=True)
     parser.add_argument("--soc", type=str, choices=soc_map.keys(), default="8650")
     parser.add_argument("--fp16-lm-head", action="store_true")
+    parser.add_argument("--silent", action="store_true", help="Hide the shell command arguments.")
+    parser.add_argument("--clear-build-files", action="store_true", help="Automatically clear the intermediate files after build.")
+    parser.add_argument("--check-model-accuracy", action="store_true", help="Automatically profile and check the QNN model accuracy after build.") # TO BE IMPLEMENTED
 
     args = parser.parse_args()
     main(args)
