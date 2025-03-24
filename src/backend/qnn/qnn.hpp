@@ -216,7 +216,9 @@ struct QNNTensor {
     float quantization_scale() const;
     auto check(const std::vector<size_t> &shape, Qnn_DataType_t datatype) -> QNNTensor *;
     void print();
+#ifdef POWERSERVE_DUMP_TENSORS
     void dump(std::vector<size_t> &n_dump_elems);
+#endif //POWERSERVE_DUMP_TENSORS
 };
 
 struct Graph {

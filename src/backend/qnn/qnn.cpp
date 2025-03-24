@@ -348,40 +348,37 @@ void HTPDevice::enter_performance_mode() {
             },
     };
 
-    // Enabled >= HTP V73
-    // SA8295 patch: ban out unsupported config
+#ifndef POWERSERVE_USE_SA8295
+    QnnHtpPerfInfrastructure_PowerConfig_t hmx_config = {
+        .option = QNN_HTP_PERF_INFRASTRUCTURE_POWER_CONFIGOPTION_HMX_V2,
+        .hmxV2Config =
+            {
+                .hmxPickDefault         = 0,
+                .hmxVoltageCornerMin    = DCVS_EXP_VCORNER_MAX,
+                .hmxVoltageCornerTarget = DCVS_EXP_VCORNER_MAX,
+                .hmxVoltageCornerMax    = DCVS_EXP_VCORNER_MAX,
+                .hmxPerfMode            = QNN_HTP_PERF_INFRASTRUCTURE_CLK_PERF_HIGH,
+            },
+    };
 
-    // QnnHtpPerfInfrastructure_PowerConfig_t hmx_config = {
-    //     .option = QNN_HTP_PERF_INFRASTRUCTURE_POWER_CONFIGOPTION_HMX_V2,
-    //     .hmxV2Config =
-    //         {
-    //             .hmxPickDefault         = 0,
-    //             .hmxVoltageCornerMin    = DCVS_EXP_VCORNER_MAX,
-    //             .hmxVoltageCornerTarget = DCVS_EXP_VCORNER_MAX,
-    //             .hmxVoltageCornerMax    = DCVS_EXP_VCORNER_MAX,
-    //             .hmxPerfMode            = QNN_HTP_PERF_INFRASTRUCTURE_CLK_PERF_HIGH,
-    //         },
-    // };
-
-    // QnnHtpPerfInfrastructure_PowerConfig_t rpc_poll_config = {
-    //     .option               = QNN_HTP_PERF_INFRASTRUCTURE_POWER_CONFIGOPTION_RPC_POLLING_TIME,
-    //     .rpcPollingTimeConfig = 9999,
-    // };
-
-    // Enabled >= HTP V73 end
+    QnnHtpPerfInfrastructure_PowerConfig_t rpc_poll_config = {
+        .option               = QNN_HTP_PERF_INFRASTRUCTURE_POWER_CONFIGOPTION_RPC_POLLING_TIME,
+        .rpcPollingTimeConfig = 9999,
+    };
+#endif //POWERSERVE_USE_SA8295
 
     QnnHtpPerfInfrastructure_PowerConfig_t rpc_ctrl_config = {
         .option                  = QNN_HTP_PERF_INFRASTRUCTURE_POWER_CONFIGOPTION_RPC_CONTROL_LATENCY,
         .rpcControlLatencyConfig = 100,
     };
 
-    // SA8295 patch: ban out previously banned configs
-
     const QnnHtpPerfInfrastructure_PowerConfig_t *power_configs[] = {
         &dcvs_v3_config,
-        // &hmx_config,
         &rpc_ctrl_config,
-        // &rpc_poll_config,
+#ifndef POWERSERVE_USE_SA8295
+        &hmx_config,
+        &rpc_poll_config,
+#endif //POWERSERVE_USE_SA8295
         nullptr,
     };
     auto ret = m_perf_infra.setPowerConfig(m_power_config_id, power_configs);
@@ -793,12 +790,7 @@ void QNNTensor::print() {
     }
 }
 
-/*
- * Function: dump_dimensions
- * Behavior: dump at most n_dump_elems elements of every dimension of the QNN tensor in a recursive way
- * 
- */
-
+#ifdef POWERSERVE_DUMP_TENSORS
 void dump_dimensions_fp32(size_t dimension_index, const float* buffer, const std::vector<size_t> &shape, const std::vector<size_t> &stride, std::vector<size_t> &curr_index, const std::vector<size_t> &n_dump_elems) {
     if(dimension_index == shape.size() - 1) {
         // Recurse ends in the last dimension, print elements
@@ -868,6 +860,7 @@ void QNNTensor::dump(std::vector<size_t> &n_dump_elems) {
         dump_dimensions_fp16(0, buf, shape, stride, init_index, n_dump_elems);
     }
 }
+#endif //POWERSERVE_DUMP_TENSORS
 
 Graph::Graph(Context &context, const std::string &name) : m_name(name) {
     auto processGraphInfo = [&](auto &graph_info) {

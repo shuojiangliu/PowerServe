@@ -48,6 +48,7 @@ void Executor::plan() {
     m_platform.ggml_backends[m_graph.m_model_id]->plan(m_graph.ops);
 }
 
+#ifdef POWERSERVE_DUMP_TENSORS
 // Debug code: dump a tensor's data
 void tensor_dump(Tensor* x, std::vector<size_t> max_show_elems, std::string name) {
     POWERSERVE_ASSERT(x->m_dtype == DataType::FP32);
@@ -71,7 +72,7 @@ void tensor_dump(Tensor* x, std::vector<size_t> max_show_elems, std::string name
         }
     }
 }
-// Debug code end
+#endif //POWERSERVE_DUMP_TENSORS
 
 void Executor::run() {
     auto &model_id = m_graph.m_model_id;
@@ -84,10 +85,10 @@ void Executor::run() {
             auto out      = op->output();
             auto [tokens] = op->get_params<GetEmbeddingParams>();
             m_platform.ggml_backends[model_id]->get_embedding(out, weight, tokens);
-            // Debug code
+#ifdef POWERSERVE_DUMP_TENSORS
             std::vector<size_t> dump_embedding_dims={8, 6, 1, 1};
             tensor_dump(out, dump_embedding_dims, "Embedding");
-            // Debug code end
+#endif //POWERSERVE_DUMP_TENSORS
         } break;
 
         case OpType::ADD: {
@@ -145,10 +146,10 @@ void Executor::run() {
             auto pos   = op->get_params<QNNForwardParams>().pos;
             auto &mask = op->get_params<QNNForwardParams>().mask;
             m_platform.qnn_backend->forward(m_graph.m_model_id, out, x, pos, mask);
-            // Debug code
+#ifdef POWERSERVE_DUMP_TENSORS
             std::vector<size_t> dump_qnn_dims={8, 6, 1, 1};
             tensor_dump(out, dump_qnn_dims, "QNN");
-            // Debug code end
+#endif //POWERSERVE_DUMP_TENSORS
         } break;
         case OpType::QNN_FORWARD_VL: {
             auto x                  = op->prev[0]->tensor();

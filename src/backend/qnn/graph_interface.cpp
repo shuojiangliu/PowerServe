@@ -235,10 +235,12 @@ void ModelChunk::load_kv(KVCacheInterface &kv_cache) {
         const float *kv_cache_data = binary_buffer.data();
 
         std::vector<__fp16> fp16_data(n_elements);
+        
         for (size_t i = 0; i < n_elements; i++) {
+#ifdef POWERSERVE_PRINT_TENSORS
             // Debug code: dump kv file buffer
             if(i < 16) fmt::print("{:.6f} ", kv_cache_data[i]);
-            // Debug code end
+#endif //POWERSERVE_DUMP_TENSORS
             fp16_data[i] = kv_cache_data[i];
         }
 

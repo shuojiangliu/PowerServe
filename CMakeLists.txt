@@ -11,6 +11,9 @@ option(POWERSERVE_WITH_PERFETTO "Enable Perfetto tracing" OFF)
 option(POWERSERVE_ANDROID_LOG "Replace the underlying interface of logger with android log interface" OFF)
 option(POWERSERVE_EXCEPTION_ABORT "Replace underlying abort/assert with raising exception" OFF)
 option(POWERSERVE_SERVER_MULTIMODEL "Cache all models used in the memory" OFF)
+option(POWERSERVE_DUMP_TENSORS "Dump all tensors' data to stdout, amount of data configurable in source code" OFF)
+option(POWERSERVE_USE_DUMMY "Enable dummy buffers on QNN" OFF)
+option(POWERSERVE_USE_SA8295 "Enable SA8295 HTP power config patch" OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -37,6 +40,18 @@ if (POWERSERVE_ENABLE_ASAN)
         add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
         link_libraries(-fsanitize=address)
     endif()
+endif()
+
+if (POWERSERVE_DUMP_TENSORS)
+    add_compile_definitions(POWERSERVE_DUMP_TENSORS)
+endif()
+
+if (POWERSERVE_USE_DUMMY)
+    add_compile_definitions(POWERSERVE_USE_DUMMY)
+endif()
+
+if (POWERSERVE_USE_SA8295)
+    add_compile_definitions(POWERSERVE_USE_SA8295)
 endif()
 
 if (POWERSERVE_ENABLE_UBSAN)
