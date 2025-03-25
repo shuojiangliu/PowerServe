@@ -127,10 +127,9 @@ class Mistral_7B_Params(ModelParams):
     n_fp16_neurons = 0
 
 
-class Qwen2_7B_Params(ModelParams):
+class Qwen2_5_7B_Params(ModelParams):
     has_qkv_bias = True
-    use_drelu = True
-    # use_drelu = False
+    use_drelu = False
     tie_embedding = False
 
     n_layers = 28
@@ -140,7 +139,7 @@ class Qwen2_7B_Params(ModelParams):
     n_heads = 28
     n_kv_heads = 4
 
-    rope_theta = 1e4
+    rope_theta = 1e6
     rms_norm_eps = 1e-6
     attention_mask_value = -5e4
 
@@ -152,7 +151,7 @@ class Qwen2_7B_Params(ModelParams):
     n_fp16_neurons = 0
 
 
-class Qwen2_0_5B_Params(ModelParams):
+class Qwen2_5_0_5B_Params(ModelParams):
     has_qkv_bias = True
     use_drelu = False
     tie_embedding = True
@@ -229,8 +228,8 @@ class SmallThinker_500M_Params(ModelParams):
 
 model_map: dict[str, ModelParams] = {
     "mistral_7b": Mistral_7B_Params,
-    "qwen2_7b": Qwen2_7B_Params,
-    "qwen2_0.5b": Qwen2_0_5B_Params,
+    "qwen2.5_7b": Qwen2_5_7B_Params,
+    "qwen2.5_0.5b": Qwen2_5_0_5B_Params,
     "llama3_1_8b": Llama3_1_8B_Params,
     "llama3_2_1b": Llama3_2_1B_Params,
     "llama2_7b": Llama2_7B_Params,
