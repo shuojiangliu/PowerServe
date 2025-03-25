@@ -7,8 +7,8 @@ from pathlib import Path
 from soc_config import soc_map
 
 
-def run_shell_command(command, is_silent=False):
-    if is_silent:
+def run_shell_command(command):
+    if args.silent:
         print(f"> {' '.join(command.split()[:2])}")
     else:
         print(f"> {' '.join(command.split())}")
@@ -58,6 +58,33 @@ def get_output_folder(folder, batch_size, htp_version):
     run_shell_command(f"cp {args.build_folder}/m*/*.bin {folder}")
     run_shell_command(f"cp {args.build_folder}/output_embedding/*.bin {folder}")
 
+    if args.profile_accuracy:
+        run_shell_command(f"cp -r {args.profile_folder}/accuracy_summary {folder}")
+
+
+def profile_accuracy():
+    # This function is not verified!
+    assert False, "Accuracy profiling function is buggy now. Don't use it."
+
+    summary_folder = Path(args.profile_folder)/'accuracy_summary'
+    summary_folder.mkdir(parents=True, exist_ok=True)
+
+    for chunk_idx in range(args.n_model_chunks):
+        for batch_size in args.batch_sizes:
+            assert args.max_n_tokens > batch_size * 5, "There should be enough calibration tokens."
+            batch_idx = args.max_n_tokens // batch_size - 1
+            profile_cmd = f"""
+            python profile_accuracy.py \
+                {'--silent' if args.silent else ''} \
+                --build-folder {args.build_folder} \
+                --profile-folder {args.profile_folder} \
+                --chunk-idx {chunk_idx} \
+                --batch_size {batch_size} \
+                --batch_idx {batch_idx}"""
+            run_shell_command(profile_command)
+
+    # TODO: Analyze the accuracy profiling results and gather them.
+
 
 def main(args):
     for i in args.batch_sizes:
@@ -74,7 +101,7 @@ def main(args):
             --n-model-chunks {args.n_model_chunks}"""
         if args.fp16_lm_head:
             onnx_command += " --fp16-lm-head"
-        run_shell_command(onnx_command, args.silent)
+        run_shell_command(onnx_command)
 
         generate_so_command = f"""
         python build_all_layers.py \
@@ -86,7 +113,7 @@ def main(args):
             --artifact-name {args.artifact_name} \
             --graph-names batch_{i}
         """
-        run_shell_command(generate_so_command, args.silent)
+        run_shell_command(generate_so_command)
 
         if args.clear_build_files:
             rm_command = f"rm -rf {args.build_folder}/m*/batch_{i}/data&&rm -rf {args.build_folder}/m*/batch_{i}/onnx_model"
@@ -103,7 +130,10 @@ def main(args):
             --n-model-chunks {args.n_model_chunks} \
             --soc {args.soc}
         """
-    run_shell_command(generate_binary_command, args.silent)
+    run_shell_command(generate_binary_command)
+
+    if args.check_model_accuracy:
+        profile_accuracy()
 
     get_output_folder(args.output_folder, args.batch_sizes[0], soc_map[args.soc].htp_version)
 
@@ -125,6 +155,7 @@ if __name__ == "__main__":
     parser.add_argument("--prompt-file", type=str, default="./prompt/lab_intro_llama.md", help="Prompt file path.", required=True)
     parser.add_argument("--build-folder", type=str, default="./build")
     parser.add_argument("--output-folder", type=str, default="./output")
+    parser.add_argument("--profile-folder", type=str, default="./profile")
     parser.add_argument("--max-n-tokens", type=int, default=1280)
     parser.add_argument("--n-model-chunks", type=int, default=1, help="Number of model chunks.")
     parser.add_argument("--artifact-name", type=str, required=True)
@@ -132,8 +163,12 @@ if __name__ == "__main__":
     parser.add_argument("--soc", type=str, choices=soc_map.keys(), default="8650")
     parser.add_argument("--fp16-lm-head", action="store_true")
     parser.add_argument("--silent", action="store_true", help="Hide the shell command arguments.")
-    parser.add_argument("--clear-build-files", action="store_true", help="Automatically clear the intermediate files after build.")
-    parser.add_argument("--check-model-accuracy", action="store_true", help="Automatically profile and check the QNN model accuracy after build.") # TO BE IMPLEMENTED
+    parser.add_argument("--clear-build-files", action="store_true", help="Automatically clear the intermediate files after build. Not compatible with --check-model-accuracy")
+    parser.add_argument("--check-model-accuracy", action="store_true", help="Automatically profile and check the QNN model accuracy after build. Not compatible with --clear-build-files") # TO BE IMPLEMENTED
 
     args = parser.parse_args()
+
+    if args.clear_build_files and args.check_model_accuracy:
+        assert False, "Check model accuracy depends on intermediate build files, so these configs are NOT compatible."
+
     main(args)
