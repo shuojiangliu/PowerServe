@@ -78,6 +78,8 @@ git submodule update --init --recursive
 
 To deploy on aarch64 with Qualcomm NPU using QNN, [**NDK**](https://developer.android.google.cn/ndk/downloads) and [**QNN**](https://docs.qualcomm.com/bundle/publicresource/topics/80-63442-50/linux_setup.html) are required to be installed.
 
+For SA8295P ADP, please use Automotive QNN SDK 2.25 instead of the commonly-used Mobile QNN SDK.
+
 ```shell
 export NDK=<path-to-ndk>
 export QNN_SDK_ROOT=<path-to-QNN>
