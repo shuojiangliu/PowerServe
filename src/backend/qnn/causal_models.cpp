@@ -99,21 +99,21 @@ void CausalLM::load_model_chunks() {
     std::sort(chunk_configs.begin(), chunk_configs.end(), cmp);
 
     // commented out for 8295
-    // std::unique_ptr<SharedBufferAllocator> dummy_alloc;
-    // std::unique_ptr<SharedBuffer> dummy_buffer;
-    // constexpr size_t dummy_sizes[] = {1024 * 1024 * 512, 1024 * 1024 * 256, 1024 * 1024 * 128};
-    // for (auto dummy_size : dummy_sizes) {
-    //     try {
-    //         dummy_alloc          = std::make_unique<SharedBufferAllocator>(dummy_size);
-    //         auto &context_binary = load_context_binary(chunk_configs[0]->model_path);
-    //         dummy_buffer =
-    //             std::make_unique<SharedBuffer>(*context_binary.m_context, *dummy_alloc, QNN_DATATYPE_INT_8, dummy_size);
-    //         break;
-    //     } catch (const std::runtime_error &e) {
-    //         dummy_alloc.reset(nullptr);
-    //         dummy_buffer.reset(nullptr);
-    //     }
-    // }
+    std::unique_ptr<SharedBufferAllocator> dummy_alloc;
+    std::unique_ptr<SharedBuffer> dummy_buffer;
+    constexpr size_t dummy_sizes[] = {1024 * 1024 * 512, 1024 * 1024 * 256, 1024 * 1024 * 128};
+    for (auto dummy_size : dummy_sizes) {
+        try {
+            dummy_alloc          = std::make_unique<SharedBufferAllocator>(dummy_size);
+            auto &context_binary = load_context_binary(chunk_configs[0]->model_path);
+            dummy_buffer =
+                std::make_unique<SharedBuffer>(*context_binary.m_context, *dummy_alloc, QNN_DATATYPE_INT_8, dummy_size);
+            break;
+        } catch (const std::runtime_error &e) {
+            dummy_alloc.reset(nullptr);
+            dummy_buffer.reset(nullptr);
+        }
+    }
     for (auto config : chunk_configs) {
         auto &chunks = m_chunks_map[config->batch_size];
         chunks.emplace_back(std::make_unique<ModelChunk>(*this, *config));
@@ -127,8 +127,8 @@ void CausalLM::load_model_chunks() {
     );
 
     // commented out for 8295
-    // dummy_buffer.reset(nullptr);
-    // dummy_alloc.reset(nullptr);
+    dummy_buffer.reset(nullptr);
+    dummy_alloc.reset(nullptr);
 
     for (size_t i = 0; i < max_chunks.size(); i++) {
         auto &max_chunk = *max_chunks[i];
