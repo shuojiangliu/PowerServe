@@ -143,8 +143,8 @@ class Qwen2_5_7B_Params(ModelParams):
     rms_norm_eps = 1e-6
     attention_mask_value = -5e4
 
-    fp16_attention_layers = [0, 27]
-    fp16_ffn_layers = [27]
+    fp16_attention_layers = [0, 1, 2, 3, 4, 5, 22, 23, 24, 25, 26, 27]
+    fp16_ffn_layers = [0, 1, 2, 3, 4, 5, 22, 23, 24, 25, 26, 27]
     fp16_rope = False
     fp16_qkv_heads = False
     n_fp16_heads = 0
@@ -167,8 +167,8 @@ class Qwen2_5_0_5B_Params(ModelParams):
     rms_norm_eps = 1e-6
     attention_mask_value = -5e4
 
-    fp16_attention_layers = [0, 1, 2, 10, 23]
-    fp16_ffn_layers = [23]
+    fp16_attention_layers = [23, 22, 21, 20, 16, 11, 9, 19, 10, 14, 13]
+    fp16_ffn_layers = [2, 21, 3, 23, 22, 5, 19, 20]
     fp16_rope = False
     fp16_qkv_heads = False
     n_fp16_heads = 0

@@ -58,7 +58,7 @@ def get_output_folder(folder, batch_size, htp_version):
     run_shell_command(f"cp {args.build_folder}/m*/*.bin {folder}")
     run_shell_command(f"cp {args.build_folder}/output_embedding/*.bin {folder}")
 
-    if args.profile_accuracy:
+    if args.check_model_accuracy:
         run_shell_command(f"cp -r {args.profile_folder}/accuracy_summary {folder}")
 
 
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     parser.add_argument("--fp16-lm-head", action="store_true")
     parser.add_argument("--silent", action="store_true", help="Hide the shell command arguments.")
     parser.add_argument("--clear-build-files", action="store_true", help="Automatically clear the intermediate files after build. Not compatible with --check-model-accuracy")
-    parser.add_argument("--check-model-accuracy", action="store_true", help="Automatically profile and check the QNN model accuracy after build. Not compatible with --clear-build-files") # TO BE IMPLEMENTED
+    parser.add_argument("--check-model-accuracy", action="store_true", help="Automatically profile and check the QNN model accuracy after build. Not compatible with --clear-build-files") # BUGGY
 
     args = parser.parse_args()
 
