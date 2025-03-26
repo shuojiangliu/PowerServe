@@ -230,7 +230,7 @@ void ModelChunk::load_kv(KVCacheInterface &kv_cache) {
 
         size_t n_elements = m_config.kv_size * head_dim;
 
-        auto binary_loader         = storage::build_file_loader(path, storage::FileLoaderMethod::DIO);
+        auto binary_loader         = storage::build_file_loader(path, storage::FileLoaderMethod::MMap);
         const auto binary_buffer   = binary_loader->get_buffer<float>();
         const float *kv_cache_data = binary_buffer.data();
 
