@@ -35,14 +35,28 @@ We test these speeds with files in `./assets/prompts`as input prompt files. More
 
 ## Table of Contents
 
-1. [End to end deployment](#end-to-end)
-2. [Prerequisites](#prerequisites)
-3. [Directory Structure](#directory-structure)
-4. [Model Preparation](#model-preparation)
-5. [Compile PowerServe](#compile-powerserve)
-6. [Prepare PowerServe Workspace](#prepare-powerserve-workspace)
-7. [Execution](#execution)
-8. [Known Issues](#known-issues)
+- [PowerServe](#powerserve)
+  - [Features](#features)
+  - [Supported Models](#supported-models)
+  - [News](#news)
+  - [Table of Contents](#table-of-contents)
+  - [End to End Deployment](#end-to-end-deployment)
+  - [Prerequisites](#prerequisites)
+  - [directory-structure](#directory-structure)
+  - [Model Preparation](#model-preparation)
+    - [Convert Models For CPU](#convert-models-for-cpu)
+    - [Convert Models For NPU](#convert-models-for-npu)
+  - [Compile PowerServe](#compile-powerserve)
+    - [Build for Linux cpu](#build-for-linux-cpu)
+    - [Build for Android cpu](#build-for-android-cpu)
+    - [Build for Android qnn](#build-for-android-qnn)
+  - [Prepare PowerServe Workspace](#prepare-powerserve-workspace)
+  - [Execution](#execution)
+    - [CLI](#cli)
+    - [Server](#server)
+  - [Known Issues](#known-issues)
+    - [Model Conversion](#model-conversion)
+    - [Execution](#execution-1)
 
 ## End to End Deployment
 
