@@ -54,6 +54,10 @@ if (POWERSERVE_USE_SA8295)
     add_compile_definitions(POWERSERVE_USE_SA8295)
 endif()
 
+if (POWERSERVE_DUMP_SPEEDINFO)
+    add_compile_definitions(POWERSERVE_DUMP_SPEEDINFO)
+endif()
+
 if (POWERSERVE_ENABLE_UBSAN)
     if (ANDROID)
         add_compile_options(-fsanitize=undefined,bounds -static-libsan)
