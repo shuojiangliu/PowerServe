@@ -3,6 +3,7 @@ import os
 import subprocess
 from pathlib import Path
 from itertools import product
+import tqdm
 
 
 def dict_product(input_dict):
@@ -81,7 +82,7 @@ run_shell_command(cmd)
 cmd = "rm -rf ./dummy_workspace.json"
 run_shell_command(cmd)
 
-for search_job in search_jobs:
+for search_job in tqdm(search_jobs):
     cmd = f"adb shell touch {str(Path(search_config['device_folder'])/'search_log.txt')}"
     run_shell_command(cmd)
 

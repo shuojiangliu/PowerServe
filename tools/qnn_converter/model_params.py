@@ -167,10 +167,10 @@ class Qwen2_5_0_5B_Params(ModelParams):
     rms_norm_eps = 1e-6
     attention_mask_value = -5e4
 
-    fp16_attention_layers = [23, 22, 21, 20, 16, 11, 9, 19, 10, 14, 13]
-    fp16_ffn_layers = [2, 21, 3, 23, 22, 5, 19, 20]
-    fp16_rope = False
-    fp16_qkv_heads = False
+    fp16_attention_layers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14, 16, 18, 19, 20, 21, 22, 23]
+    fp16_ffn_layers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 18, 19, 20, 21, 22, 23]
+    fp16_rope = True
+    fp16_qkv_heads = True
     n_fp16_heads = 0
     n_fp16_neurons = 0
 
